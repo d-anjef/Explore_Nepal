@@ -1,0 +1,37 @@
+.about_background_image {
+  background: url("../../assets/images/bg_jmg1.jpg") no-repeat;
+  background-size: cover;
+  filter: brightness(0.7);
+  height: 340px;
+}
+
+.about_hero_content {
+  position: absolute;
+  height: 340px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0 1rem;
+}
+
+@media only screen and (min-width: 550px) {
+  .about_background_image {
+    background-size: cover;
+  }
+}
+
+@media only screen and (min-width: 800px) {
+  .about_background_image {
+    background-size: cover;
+  }
+}
+
+@media only screen and (min-width: 1080px) {
+  .about_background_image {
+    background-size: cover;
+  }
+}

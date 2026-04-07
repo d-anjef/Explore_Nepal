@@ -1,0 +1,352 @@
+/* ============================================================================
+   PACKAGECARD PREMIUM STYLING
+   Luxury Travel Package Card with Modern, Professional Aesthetic
+   ============================================================================ */
+
+:root {
+  /* Primary Colors */
+  --primary-dark: #0f172a;
+  --primary-light: #1e293b;
+  --accent-teal: #0891b2;
+  --accent-teal-light: #06b6d4;
+  
+  /* Secondary Colors */
+  --success-green: #10b981;
+  --success-dark: #059669;
+  --warning-amber: #f59e0b;
+  
+  /* Neutrals */
+  --white: #ffffff;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-500: #6b7280;
+  --gray-700: #374151;
+  --gray-900: #111827;
+  
+  /* Shadows & Effects */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  --shadow-hover: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================================
+   LINK WRAPPER
+   ============================================================================ */
+
+.w-full {
+  width: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ============================================================================
+   MAIN CARD CONTAINER
+   ============================================================================ */
+
+.bg-white.border.flex.flex-col.items-center.p-3.rounded.shadow-md.overflow-hidden {
+  /* Reset and Base Styles */
+  background: var(--white);
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  
+  /* Premium Styling */
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  box-shadow: var(--shadow-lg);
+  transition: all var(--transition-normal);
+  position: relative;
+  
+  /* Subtle border for definition */
+  border: 1px solid var(--gray-100);
+}
+
+/* Hover Effect - Lift and Enhanced Shadow */
+.bg-white.border.flex.flex-col.items-center.p-3.rounded.shadow-md.overflow-hidden:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--accent-teal);
+}
+
+/* ============================================================================
+   IMAGE SECTION
+   ============================================================================ */
+
+img[alt*="Package"] {
+  width: 100%;
+  height: 220px;
+  border-radius: 8px;
+  border: none;
+  object-fit: cover;
+  display: block;
+  transition: transform var(--transition-normal);
+  will-change: transform;
+}
+
+/* Hover image zoom effect */
+.bg-white.border.flex.flex-col.items-center.p-3.rounded.shadow-md.overflow-hidden:hover img[alt*="Package"] {
+  transform: scale(1.08);
+}
+
+/* Fallback gradient image placeholder */
+.w-full.h-\[220px\].rounded.border.bg-gradient-to-br.from-blue-400.to-blue-600.flex.items-center.justify-center {
+  border-radius: 8px;
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  border: none;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Placeholder text styling */
+.w-full.h-\[220px\].rounded.border.bg-gradient-to-br.from-blue-400.to-blue-600.flex.items-center.justify-center .text-center {
+  padding: 16px;
+}
+
+.w-full.h-\[220px\].rounded.border.bg-gradient-to-br.from-blue-400.to-blue-600.flex.items-center.justify-center .text-2xl {
+  font-size: 2rem;
+  margin-bottom: 8px;
+  animation: float 3s ease-in-out infinite;
+}
+
+.w-full.h-\[220px\].rounded.border.bg-gradient-to-br.from-blue-400.to-blue-600.flex.items-center.justify-center .text-sm {
+  color: var(--white);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* ============================================================================
+   CONTENT SECTION
+   ============================================================================ */
+
+.w-full.flex.flex-col.my-2 {
+  width: 100%;
+  margin: 24px 20px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ============================================================================
+   PACKAGE NAME & DESTINATION
+   ============================================================================ */
+
+.font-semibold.text-lg.capitalize.truncate.w-full {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--gray-900);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+
+.bg-white.border.flex.flex-col.items-center.p-3.rounded.shadow-md.overflow-hidden:hover .font-semibold.text-lg.capitalize.truncate.w-full {
+  color: var(--accent-teal);
+}
+
+.text-green-700.text-lg.capitalize.truncate.w-full {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--success-green);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+/* ============================================================================
+   DURATION SECTION
+   ============================================================================ */
+
+.flex.text-lg.items-center.gap-2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--gray-700);
+  font-weight: 500;
+}
+
+.flex.text-lg.items-center.gap-2 svg {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-teal);
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   RATING SECTION
+   ============================================================================ */
+
+.min-h-\[28px\].flex.items-center.my-1 {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.flex.items-center.gap-1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* MUI Rating Styling */
+.MuiRating-root {
+  font-size: 1rem !important;
+}
+
+.MuiRating-icon {
+  color: var(--warning-amber) !important;
+  transition: transform var(--transition-fast) !important;
+}
+
+.text-sm.text-gray-600 {
+  font-size: 0.8rem;
+  color: var(--gray-500);
+  font-weight: 500;
+}
+
+.text-sm.text-gray-400 {
+  font-size: 0.8rem;
+  color: var(--gray-300);
+  font-style: italic;
+}
+
+/* ============================================================================
+   PRICE SECTION
+   ============================================================================ */
+
+.mt-1 {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gray-100);
+}
+
+/* Price Layout */
+.flex.items-center.gap-2.flex-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Discount Price (Main) */
+.text-lg.font-bold.text-green-700 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--success-green);
+  letter-spacing: -0.5px;
+}
+
+/* Original Price (Strikethrough) */
+.line-through.text-gray-500.text-sm {
+  font-size: 0.85rem;
+  color: var(--gray-300);
+  text-decoration: line-through;
+  font-weight: 500;
+}
+
+/* Discount Badge */
+.bg-green-600.text-white.text-xs.font-bold.px-2.py-1.rounded {
+  background: linear-gradient(135deg, var(--success-green) 0%, var(--success-dark) 100%);
+  color: var(--white);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+/* Regular Price (No Discount) */
+.text-lg.font-bold.text-green-700 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--success-green);
+}
+
+/* ============================================================================
+   ANIMATIONS
+   ============================================================================ */
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+  }
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .w-full.flex.flex-col.my-2 {
+    margin: 16px 16px 16px 16px;
+  }
+
+  .font-semibold.text-lg.capitalize.truncate.w-full {
+    font-size: 1rem;
+  }
+
+  .text-lg.font-bold.text-green-700 {
+    font-size: 1.125rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .w-full.h-\[220px\].rounded.border.bg-gradient-to-br.from-blue-400.to-blue-600.flex.items-center.justify-center .text-sm {
+    font-size: 0.75rem;
+  }
+
+  img[alt*="Package"] {
+    height: 180px;
+  }
+}
+
+/* ============================================================================
+   ACCESSIBILITY & PRINT
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  .bg-white.border.flex.flex-col.items-center.p-3.rounded.shadow-md.overflow-hidden {
+    box-shadow: none;
+    border: 1px solid var(--gray-200);
+  }
+}

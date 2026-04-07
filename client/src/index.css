@@ -1,0 +1,28 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  font-family: "Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+/* Global scrollbar styling (was previously in admin DashboardStyle.css) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px !important;
+}
+
+::-webkit-scrollbar-track {
+  /* background: white !important; */
+  background: rgb(148, 165, 196) !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(59, 130, 246) !important;
+  border-radius: 100vw;
+  border: white 0.5px solid;
+}
+
