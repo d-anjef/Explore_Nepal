@@ -19,25 +19,32 @@ const Home = () => {
   const [search, setSearch] = useState("");
   const [hasBookings, setHasBookings] = useState(false);
 
-  const getRecommendedPackages = useCallback(async () => {
-    try {
-      setLoading(true);
-      const userId = currentUser?._id || "";
-      const res = await fetch(
-        `/api/package/get-recommended-packages?userId=${userId}&limit=8`
-      );
-      const data = await res.json();
-      if (data?.success) {
-        setRecommendedPackages(data?.packages);
-        setLoading(false);
-      } else {
-        setLoading(false);
-      }
-    } catch (error) {
-      console.log(error);
+  // Example for getRecommendedPackages - Apply this pattern to ALL fetch calls in Home.jsx
+const getRecommendedPackages = useCallback(async () => {
+  try {
+    setLoading(true);
+    const userId = currentUser?._id || "";
+    const res = await fetch(`/api/package/get-recommended-packages?userId=${userId}&limit=8`);
+    
+    // GUARD: Check if the response is actually JSON and successful
+    const contentType = res.headers.get("content-type");
+    if (!res.ok || !contentType || !contentType.includes("application/json")) {
+      const errorText = await res.text();
+      console.error("Backend returned non-JSON response:", errorText);
       setLoading(false);
+      return; 
     }
-  }, [currentUser]);
+
+    const data = await res.json();
+    if (data?.success) {
+      setRecommendedPackages(data?.packages);
+    }
+    setLoading(false);
+  } catch (error) {
+    console.error("Fetch error:", error);
+    setLoading(false);
+  }
+}, [currentUser]);
 
   const checkUserBookings = useCallback(async () => {
     if (currentUser?._id) {

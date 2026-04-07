@@ -33,46 +33,35 @@ import AdminUserView from "./pages/admin/AdminUserView";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailure from "./pages/PaymentFailure";
 
-
 const App = () => {
   return (
     <BrowserRouter>
       <Toaster position="top-center" />
       <Header />
       <Routes>
+        {/* --- PUBLIC ACCESSIBLE ROUTES --- */}
+        {/* These must stay outside PrivateRoute to handle external redirects like eSewa */}
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        {/* Protected routes - require authentication */}
-        <Route path="/home" element={<PrivateRoute />}>
-          <Route path="" element={<Home />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-failure" element={<PaymentFailure />} />
+
+        {/* --- PROTECTED USER ROUTES --- */}
+        <Route element={<PrivateRoute />}>
+          <Route path="/home" element={<Home />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="/package/:id" element={<Package />} />
+          <Route path="/package/ratings/:id" element={<RatingsPage />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/guide-application" element={<GuideApplication />} />
+          <Route path="/request-guide" element={<RequestGuide />} />
+          <Route path="/profile/user" element={<Profile />} />
+          <Route path="/booking/:packageId" element={<Booking />} />
+          <Route path="/stripe-checkout" element={<StripeCheckout />} />
         </Route>
-        <Route path="/search" element={<PrivateRoute />}>
-          <Route path="" element={<Search />} />
-        </Route>
-        <Route path="/package/:id" element={<PrivateRoute />}>
-          <Route path="" element={<Package />} />
-        </Route>
-        <Route path="/package/ratings/:id" element={<PrivateRoute />}>
-          <Route path="" element={<RatingsPage />} />
-        </Route>
-        <Route path="/about" element={<PrivateRoute />}>
-          <Route path="" element={<About />} />
-        </Route>
-        <Route path="/guide-application" element={<PrivateRoute />}>
-          <Route path="" element={<GuideApplication />} />
-        </Route>
-        <Route path="/request-guide" element={<PrivateRoute />}>
-          <Route path="" element={<RequestGuide />} />
-        </Route>
-        {/* user */}
-        <Route path="/profile" element={<PrivateRoute />}>
-          <Route path="user" element={<Profile />} />
-          
-        </Route>
-         <Route path="/payment-success" element={<PaymentSuccess />} />
-          <Route path="/payment-failure" element={<PaymentFailure />} />
-        {/* admin - dedicated routes */}
+
+        {/* --- ADMIN ROUTES --- */}
         <Route path="/admin" element={<AdminRoute />}>
           <Route path="" element={<AdminHome />} />
           <Route path="dashboard" element={<AdminDashboard />} />
@@ -88,18 +77,13 @@ const App = () => {
           <Route path="guide-applications" element={<GuideApplications />} />
         </Route>
 
-        {/* guide - dedicated routes */}
+        {/* --- GUIDE ROUTES --- */}
         <Route path="/guide" element={<GuideRoute />}>
           <Route path="" element={<GuideDashboard />} />
         </Route>
-        {/* checking user auth before booking */}
-        <Route path="/booking" element={<PrivateRoute />}>
-          <Route path=":packageId" element={<Booking />} />
-        </Route>
-        {/* stripe checkout */}
-        <Route path="/stripe-checkout" element={<PrivateRoute />}>
-          <Route path="" element={<StripeCheckout />} />
-        </Route>
+
+        {/* 404 Fallback - Recommended for Senior Level UX */}
+        <Route path="*" element={<div className="p-20 text-center">Page Not Found</div>} />
       </Routes>
     </BrowserRouter>
   );

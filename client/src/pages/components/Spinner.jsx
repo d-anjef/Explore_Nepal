@@ -7,30 +7,33 @@ const Spinner = ({ path = "login" }) => {
   const location = useLocation();
 
   useEffect(() => {
+    // PREVENT REDIRECT IF VERIFYING PAYMENT
+    if (location.pathname === "/payment-success") {
+      return; 
+    }
+
     const interval = setInterval(() => {
-      setCount((prevValue) => --prevValue);
+      setCount((prevValue) => prevValue - 1);
     }, 1000);
-    count === 0 &&
+
+    if (count === 0) {
       navigate(`/${path}`, {
         state: location.pathname,
       });
+    }
+
     return () => clearInterval(interval);
   }, [count, navigate, location, path]);
 
   return (
-    <>
-      <div
-        className="flex flex-col justify-center items-center"
-        style={{ height: "100vh" }}
-      >
-        <h1 className="text-center text-2xl me-2">
-          Redirecting you in {count}
-        </h1>
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    </>
+    <div className="flex flex-col justify-center items-center h-screen bg-white">
+      <h1 className="text-center text-2xl mb-4 font-semibold text-gray-700">
+        {location.pathname === "/payment-success" 
+          ? "Finalizing your transaction..." 
+          : `Redirecting you in ${count}`}
+      </h1>
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
+    </div>
   );
 };
 

@@ -233,8 +233,24 @@ const StripeCheckout = () => {
       googlePay: 'never',
     },
   };
-  const payWithEsewa = async () => {
+  // ... (existing imports and Stripe code)
+const payWithEsewa = async () => {
   try {
+    const bId = packageData?._id || bookingDetails?.packageDetails;
+
+    if (!bId) {
+      return toast.error("Missing Package ID");
+    }
+
+    // 🔥 CRITICAL: store BEFORE anything
+    if (!bookingDetails) {
+      return toast.error("Booking data missing");
+    }
+
+    sessionStorage.setItem("booking", JSON.stringify(bookingDetails));
+
+    console.log("Stored booking BEFORE redirect:", bookingDetails);
+
     const res = await fetch("/api/payment/esewa", {
       method: "POST",
       headers: {
@@ -242,39 +258,41 @@ const StripeCheckout = () => {
       },
       body: JSON.stringify({
         amount: bookingDetails.totalPrice,
-        bookingId: bookingDetails.packageDetails,
+        bookingId: bId,
       }),
     });
 
     const data = await res.json();
 
-    if (!data) {
-      toast.error("Failed to initialize eSewa payment");
-      return;
+    if (!res.ok) {
+      throw new Error(data.message || "Server error");
     }
 
-    // Create form dynamically
+    // 🔥 Create form
     const form = document.createElement("form");
     form.method = "POST";
     form.action = "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
 
-    Object.keys(data).forEach((key) => {
+    Object.entries(data).forEach(([key, value]) => {
       const input = document.createElement("input");
       input.type = "hidden";
       input.name = key;
-      input.value = data[key];
+      input.value = value;
       form.appendChild(input);
     });
 
     document.body.appendChild(form);
-    form.submit();
+
+    // 🔥 SMALL DELAY ensures storage is committed
+    setTimeout(() => {
+      form.submit();
+    }, 300);
+
   } catch (error) {
-    console.error(error);
-    toast.error("eSewa payment failed");
+    console.error("eSewa Error:", error);
+    toast.error(error.message || "Payment failed");
   }
 };
-
-
   return (
     <div className="w-full min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
@@ -287,7 +305,7 @@ const StripeCheckout = () => {
             <FaArrowLeft />
             <span>Back to Booking</span>
           </button>
-          <h1 className="text-3xl font-bold text-center">Stripe Payment</h1>
+          <h1 className="text-3xl font-bold text-center">Checkout</h1>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
@@ -319,7 +337,7 @@ const StripeCheckout = () => {
             </div>
           )}
 
-          {/* Payment Form */}
+          {/* Payment Form (Stripe) */}
           {loading && (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -338,11 +356,10 @@ const StripeCheckout = () => {
               </button>
             </div>
           )}
-          
 
           {!loading && !error && clientSecret && stripeInstance && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">Payment Options</h2>
+              <h2 className="text-xl font-semibold mb-4">Pay with Card (Stripe)</h2>
               <Elements stripe={stripeInstance} options={options}>
                 <CheckoutForm
                   bookingDetails={bookingDetails}
@@ -352,21 +369,22 @@ const StripeCheckout = () => {
               </Elements>
             </div>
           )}
-          <div className="mt-6">
-  <p className="text-center text-gray-500 mb-3">OR</p>
 
-  <button
-    onClick={payWithEsewa}
-    className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold"
-  >
-    Pay with eSewa
-  </button>
-</div>
-
+          {/* eSewa Alternative */}
+          {!loading && !error && (
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              <p className="text-center text-gray-400 mb-4 text-sm font-medium">OR PAY WITH DIGITAL WALLET</p>
+              <button
+                onClick={payWithEsewa}
+                className="w-full bg-[#60bb46] hover:bg-[#52a03c] text-white py-4 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors shadow-md"
+              >
+                <span className="text-lg">Pay with eSewa</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
-    
   );
 };
 

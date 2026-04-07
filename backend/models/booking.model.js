@@ -30,7 +30,7 @@ const bookingSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["braintree", "stripe"],
+      enum: ["braintree", "stripe", "esewa"],
       default: "braintree",
     },
     paymentId: {
