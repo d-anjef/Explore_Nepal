@@ -11,7 +11,10 @@ import {
   FaCheckCircle,
   FaRobot,
   FaTimes,
-  FaMagic
+  FaMagic,
+  FaPhone,
+  FaMapMarkerAlt,
+  FaBriefcase
 } from "react-icons/fa";
 import { FaRankingStar } from "react-icons/fa6";
 import { LuBadgePercent } from "react-icons/lu";
@@ -33,6 +36,11 @@ const Home = () => {
   const [search, setSearch] = useState("");
   const [hasBookings, setHasBookings] = useState(false);
   const [weather, setWeather] = useState({ temp: 18, condition: "Clear Skies" });
+  
+  // --- GUIDE STATES ---
+  const [guides, setGuides] = useState([]);
+  const [guideLoading, setGuideLoading] = useState(false);
+  const [guideBookings, setGuideBookings] = useState({});
 
   // --- AI CONCIERGE STATES ---
   const [isAiOpen, setIsAiOpen] = useState(false);
@@ -122,13 +130,75 @@ const Home = () => {
     }
   }, []);
 
+  // --- FETCH FEATURED GUIDES ---
+  const getFeaturedGuides = useCallback(async () => {
+    try {
+      setGuideLoading(true);
+      const res = await fetch("/api/guide-application/get-approved-guides?limit=6");
+      const data = await res.json();
+
+      if (data.success) {
+        // Fetch guide bookings
+        await fetchGuideBookingsData();
+        
+        // Filter out current user's profile
+        const filteredGuides = (data.guides || []).filter(
+          (guide) => guide && guide.email && guide.email !== currentUser?.email
+        );
+        setGuides(filteredGuides.slice(0, 6));
+      }
+    } catch (error) {
+      console.error("Error fetching guides:", error);
+    } finally {
+      setGuideLoading(false);
+    }
+  }, [currentUser]);
+
+  const fetchGuideBookingsData = async () => {
+    try {
+      const res = await fetch('/api/guide-message/get-all-messages', {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        const bookingsMap = {};
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        data.messages.forEach((msg) => {
+          if (msg.status === 'approved' && msg.tourDate && msg.tourDays) {
+            const tourStartDate = new Date(msg.tourDate);
+            tourStartDate.setHours(0, 0, 0, 0);
+            
+            const tourEndDate = new Date(tourStartDate);
+            tourEndDate.setDate(tourEndDate.getDate() + parseInt(msg.tourDays));
+            
+            if (today >= tourStartDate && today < tourEndDate) {
+              bookingsMap[msg.guideEmail] = (bookingsMap[msg.guideEmail] || 0) + 1;
+            }
+          }
+        });
+        setGuideBookings(bookingsMap);
+      }
+    } catch (error) {
+      console.error("Error fetching guide bookings:", error);
+    }
+  };
+
   useEffect(() => {
     checkUserBookings();
     getRecommendedPackages();
     getTopPackages();
     getLatestPackages();
     getOfferPackages();
-  }, [checkUserBookings, getRecommendedPackages, getTopPackages, getLatestPackages, getOfferPackages]);
+    getFeaturedGuides();
+  }, [checkUserBookings, getRecommendedPackages, getTopPackages, getLatestPackages, getOfferPackages, getFeaturedGuides]);
 
   // --- ANIMATION VARIANTS ---
   const fadeInUp = {
@@ -281,6 +351,152 @@ const Home = () => {
         </div>
       </section>
 
+      {/* --- HIRE A GUIDE SECTION --- */}
+      <section className="py-32 bg-gradient-to-b from-slate-50/50 to-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <motion.div initial="hidden" whileInView="visible" variants={fadeInUp} viewport={{ once: true }} className="mb-20">
+            <div className="flex justify-between items-end mb-6">
+              <div>
+                <h2 className="text-teal-600 font-bold uppercase tracking-widest text-xs mb-3">Expert Companions</h2>
+                <h3 className="text-5xl font-black text-slate-900">Hire Your Perfect Guide</h3>
+              </div>
+              <button 
+                onClick={() => navigate('/request-guide')} 
+                className="group flex items-center gap-3 font-black text-slate-900 hover:text-teal-600 transition-colors hidden md:flex"
+              >
+                View All Guides <FaArrowRight className="group-hover:translate-x-2 transition-transform" />
+              </button>
+            </div>
+            <p className="text-slate-600 text-lg max-w-2xl">Connect with experienced and certified guides who know every secret of the Himalayas. Your adventure, perfectly guided.</p>
+          </motion.div>
+
+          {guideLoading ? (
+            <div className="text-center py-20 text-slate-400 font-bold animate-pulse text-lg uppercase tracking-widest">
+              Loading Expert Guides...
+            </div>
+          ) : guides.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-slate-600 text-lg mb-6">No guides available at the moment</p>
+              <button 
+                onClick={() => navigate('/request-guide')}
+                className="bg-teal-500 hover:bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold transition-all"
+              >
+                Explore All Guides
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {guides.map((guide, index) => {
+                const bookingCount = guideBookings[guide.email] || 0;
+                const isBooked = bookingCount > 0;
+
+                return (
+                  <motion.div
+                    key={guide._id}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1, duration: 0.6 }}
+                    viewport={{ once: true }}
+                    whileHover={{ y: -8 }}
+                    className={`group relative rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-slate-200 h-full flex flex-col ${
+                      isBooked ? 'opacity-85' : ''
+                    }`}
+                  >
+                    {/* Background Gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-teal-900" />
+                    
+                    {/* Booking Badge */}
+                    {isBooked && (
+                      <div className="absolute top-6 right-6 z-20">
+                        <div className="px-4 py-2 rounded-full text-xs font-bold bg-amber-400 text-slate-900 shadow-lg transform group-hover:scale-110 transition-transform">
+                          {bookingCount} Booked
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <div className="relative z-10 p-8 flex flex-col h-full">
+                      {/* Header */}
+                      <div className="mb-8">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-400 to-emerald-300 flex items-center justify-center text-white font-black text-2xl mb-4 shadow-lg">
+                          {guide.fullName.charAt(0).toUpperCase()}
+                        </div>
+                        <h3 className="text-3xl font-black text-white mb-2">{guide.fullName}</h3>
+                        <div className="flex items-center gap-2 text-teal-300">
+                          <FaBriefcase className="text-lg" />
+                          <span className="font-bold">{guide.experience} years experience</span>
+                        </div>
+                      </div>
+
+                      {/* Details */}
+                      <div className="space-y-4 flex-grow">
+                        {/* Location */}
+                        <div className="flex items-start gap-3">
+                          <FaMapMarkerAlt className="text-teal-400 mt-1 flex-shrink-0 text-lg" />
+                          <div>
+                            <p className="text-slate-400 text-sm font-semibold uppercase tracking-widest">Location</p>
+                            <p className="text-white text-sm mt-1">{guide.address}</p>
+                          </div>
+                        </div>
+
+                        {/* Phone */}
+                        <div className="flex items-start gap-3">
+                          <FaPhone className="text-emerald-400 mt-1 flex-shrink-0 text-lg" />
+                          <div>
+                            <p className="text-slate-400 text-sm font-semibold uppercase tracking-widest">Phone</p>
+                            <a 
+                              href={`tel:${guide.phone}`}
+                              className="text-white text-sm mt-1 hover:text-teal-300 transition-colors font-semibold"
+                            >
+                              {guide.phone}
+                            </a>
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div className="mt-6 pt-6 border-t border-slate-700">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className={`w-3 h-3 rounded-full ${isBooked ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                            <span className={`text-sm font-bold uppercase tracking-widest ${isBooked ? 'text-amber-300' : 'text-emerald-300'}`}>
+                              {isBooked ? 'Actively Booked' : 'Available Now'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CTA Button */}
+                      <button
+                        onClick={() => navigate('/request-guide')}
+                        disabled={isBooked}
+                        className={`w-full mt-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all transform ${
+                          isBooked
+                            ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                            : 'bg-teal-500 text-white hover:bg-teal-400 active:scale-95 shadow-lg shadow-teal-500/30'
+                        }`}
+                      >
+                        {isBooked ? 'Currently Unavailable' : 'Hire Guide'}
+                      </button>
+                    </div>
+
+                    {/* Decorative Element */}
+                    <div className="absolute bottom-0 right-0 w-32 h-32 bg-teal-500/10 rounded-full blur-3xl -mr-16 -mb-16 group-hover:bg-teal-500/20 transition-all" />
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Mobile View All Button */}
+          <div className="mt-12 text-center md:hidden">
+            <button 
+              onClick={() => navigate('/request-guide')}
+              className="bg-teal-500 hover:bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold transition-all"
+            >
+              View All Guides
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* --- SIGNATURE JOURNEY --- */}
       <section className="py-32 max-w-7xl mx-auto px-6">
