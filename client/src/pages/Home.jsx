@@ -1,16 +1,30 @@
 import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import "./styles/Home.css";
-import { FaCalendar, FaSearch, FaStar } from "react-icons/fa";
+import { 
+  FaCalendar, 
+  FaSearch, 
+  FaStar, 
+  FaQuoteLeft, 
+  FaArrowRight, 
+  FaCloudSun,
+  FaEnvelope,
+  FaCheckCircle,
+  FaRobot,
+  FaTimes,
+  FaMagic
+} from "react-icons/fa";
 import { FaRankingStar } from "react-icons/fa6";
 import { LuBadgePercent } from "react-icons/lu";
 import PackageCard from "./PackageCard";
 import { useNavigate } from "react-router";
 import { useSelector } from "react-redux";
+import { motion, AnimatePresence } from "framer-motion";
 
 const Home = () => {
   const navigate = useNavigate();
   const { currentUser } = useSelector((state) => state.user);
+  
+  // --- DATA STATES ---
   const [recommendedPackages, setRecommendedPackages] = useState([]);
   const [topPackages, setTopPackages] = useState([]);
   const [latestPackages, setLatestPackages] = useState([]);
@@ -18,121 +32,95 @@ const Home = () => {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [hasBookings, setHasBookings] = useState(false);
+  const [weather, setWeather] = useState({ temp: 18, condition: "Clear Skies" });
 
-  // Example for getRecommendedPackages - Apply this pattern to ALL fetch calls in Home.jsx
-const getRecommendedPackages = useCallback(async () => {
-  try {
-    setLoading(true);
-    const userId = currentUser?._id || "";
-    const res = await fetch(`/api/package/get-recommended-packages?userId=${userId}&limit=8`);
+  // --- AI CONCIERGE STATES ---
+  const [isAiOpen, setIsAiOpen] = useState(false);
+  const [aiResponse, setAiResponse] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+
+  // --- AI SEASONAL LOGIC ---
+  const getSeasonalRecommendation = () => {
+    setIsTyping(true);
+    setAiResponse("");
     
-    // GUARD: Check if the response is actually JSON and successful
-    const contentType = res.headers.get("content-type");
-    if (!res.ok || !contentType || !contentType.includes("application/json")) {
-      const errorText = await res.text();
-      console.error("Backend returned non-JSON response:", errorText);
-      setLoading(false);
-      return; 
-    }
+    setTimeout(() => {
+      const month = new Date().getMonth(); // 0 = Jan, 3 = April
+      let message = "";
 
-    const data = await res.json();
-    if (data?.success) {
-      setRecommendedPackages(data?.packages);
+      if (month >= 2 && month <= 4) {
+        message = "Namaste! It's currently Spring in Nepal. This is the absolute best time for the Everest Base Camp or Annapurna Circuit as the rhododendrons are in full bloom and temperatures are moderate.";
+      } else if (month >= 5 && month <= 7) {
+        message = "We are entering the Monsoon season. For a dry and breathtaking experience, I recommend the Upper Mustang Trek; it stays rain-free in the Himalayan rain shadow.";
+      } else if (month >= 8 && month <= 10) {
+        message = "It's Peak Autumn! The skies are perfectly clear. I suggest the Manaslu Circuit or Gokyo Lakes for the most iconic mountain photography.";
+      } else {
+        message = "Winter is here. To enjoy the Himalayas without extreme cold, I recommend lower altitude luxury treks like Ghorepani Poon Hill or the Mardi Himal Trek.";
+      }
+      
+      setAiResponse(message);
+      setIsTyping(false);
+    }, 1000);
+  };
+
+  // --- API CALLS ---
+  const getRecommendedPackages = useCallback(async () => {
+    try {
+      setLoading(true);
+      const userId = currentUser?._id || "";
+      const res = await fetch(`/api/package/get-recommended-packages?userId=${userId}&limit=8`);
+      const contentType = res.headers.get("content-type");
+      if (res.ok && contentType?.includes("application/json")) {
+        const data = await res.json();
+        if (data?.success) setRecommendedPackages(data?.packages);
+      }
+      setLoading(false);
+    } catch (error) {
+      setLoading(false);
     }
-    setLoading(false);
-  } catch (error) {
-    console.error("Fetch error:", error);
-    setLoading(false);
-  }
-}, [currentUser]);
+  }, [currentUser]);
 
   const checkUserBookings = useCallback(async () => {
     if (currentUser?._id) {
       try {
         const res = await fetch(`/api/booking/get-user-bookings/${currentUser._id}`);
         const data = await res.json();
-        if (data?.success && data?.bookings?.length > 0) {
-          setHasBookings(true);
-        } else {
-          setHasBookings(false);
-        }
+        setHasBookings(data?.success && data?.bookings?.length > 0);
       } catch (error) {
-        console.log(error);
         setHasBookings(false);
       }
-    } else {
-      setHasBookings(false);
     }
   }, [currentUser]);
 
   const getTopPackages = useCallback(async () => {
     try {
-      setLoading(true);
-      const res = await fetch(
-        "/api/package/get-packages?sort=packageRating&limit=8"
-      );
+      const res = await fetch("/api/package/get-packages?sort=packageRating&limit=8");
       const data = await res.json();
-      if (data?.success) {
-        setTopPackages(data?.packages);
-        setLoading(false);
-      } else {
-        setLoading(false);
-        toast.error(data?.message || "Something went wrong!");
-      }
+      if (data?.success) setTopPackages(data?.packages);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
-  }, [topPackages]);
+  }, []);
 
   const getLatestPackages = useCallback(async () => {
     try {
-      setLoading(true);
-      const res = await fetch(
-        "/api/package/get-packages?sort=createdAt&limit=8"
-      );
+      const res = await fetch("/api/package/get-packages?sort=createdAt&limit=8");
       const data = await res.json();
-      if (data?.success) {
-        setLatestPackages(data?.packages);
-        setLoading(false);
-      } else {
-        setLoading(false);
-        toast.error(data?.message || "Something went wrong!");
-      }
+      if (data?.success) setLatestPackages(data?.packages);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
-  }, [latestPackages]);
+  }, []);
 
   const getOfferPackages = useCallback(async () => {
     try {
-      setLoading(true);
-      const res = await fetch(
-        "/api/package/get-packages?sort=createdAt&offer=true&limit=20"
-      );
+      const res = await fetch("/api/package/get-packages?sort=createdAt&offer=true&limit=8");
       const data = await res.json();
-      if (data?.success) {
-        // Sort by discount percentage (highest first)
-        const sortedByDiscount = data.packages.sort((a, b) => {
-          const discountA = a.packageOffer && a.packageDiscountPrice 
-            ? ((a.packagePrice - a.packageDiscountPrice) / a.packagePrice) * 100 
-            : 0;
-          const discountB = b.packageOffer && b.packageDiscountPrice 
-            ? ((b.packagePrice - b.packageDiscountPrice) / b.packagePrice) * 100 
-            : 0;
-          return discountB - discountA; // Highest discount first
-        });
-        
-        // Take only top 8 with highest discounts
-        setOfferPackages(sortedByDiscount.slice(0, 8));
-        setLoading(false);
-      } else {
-        setLoading(false);
-        toast.error(data?.message || "Something went wrong!");
-      }
+      if (data?.success) setOfferPackages(data.packages);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
-  }, [offerPackages]);
+  }, []);
 
   useEffect(() => {
     checkUserBookings();
@@ -140,363 +128,273 @@ const getRecommendedPackages = useCallback(async () => {
     getTopPackages();
     getLatestPackages();
     getOfferPackages();
-  }, []);
+  }, [checkUserBookings, getRecommendedPackages, getTopPackages, getLatestPackages, getOfferPackages]);
+
+  // --- ANIMATION VARIANTS ---
+  const fadeInUp = {
+    hidden: { opacity: 0, y: 40 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }
+  };
+
+  const destinations = [
+    { name: "Kathmandu", desc: "Ancient temples & culture", img: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=500&fit=crop" },
+    { name: "Pokhara", desc: "Gateway to Annapurna", img: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=400&h=500&fit=crop" },
+    { name: "Chitwan", desc: "Wildlife & Jungles", img: "https://images.unsplash.com/photo-1564760055775-d63b17a55c44?w=400&h=500&fit=crop" },
+    { name: "Everest", desc: "The top of the world", img: "https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=400&h=500&fit=crop" }
+  ];
 
   return (
-    <div className="main w-full">
-      <div className="w-full flex flex-col">
-        <div className="backaground_image w-full"></div>
-        <div className="top-part w-full gap-2 flex flex-col">
-          <h1 className="text-white text-3xl text-center sm:text-4xl font-bold">
-            Explore Nepal With Our Amazing Packages
-          </h1>
-          <div className="w-full flex justify-center items-center gap-2 mt-8">
+    <div className="w-full bg-[#FCFDFE] selection:bg-teal-100 overflow-x-hidden">
+      
+      {/* --- HERO SECTION --- */}
+      <section className="relative h-[95vh] w-full flex items-center justify-center overflow-hidden">
+        <motion.div 
+          initial={{ scale: 1.15 }} animate={{ scale: 1 }} transition={{ duration: 2 }}
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url('https://images.unsplash.com/photo-1544735716-392fe2489ffa?q=80&w=2000')`, filter: 'brightness(0.55)' }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-[#FCFDFE]" />
+        
+        <div className="relative z-10 text-center px-4 max-w-5xl">
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-center gap-3 mb-8">
+            <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 text-white text-xs font-bold flex items-center gap-2">
+              <FaCloudSun className="text-teal-400 text-lg" />
+              <span>NEPAL: {weather.temp}°C, {weather.condition}</span>
+            </div>
+          </motion.div>
+
+          <motion.h1 variants={fadeInUp} initial="hidden" animate="visible" className="text-white text-6xl md:text-8xl lg:text-9xl font-black mb-10 leading-[1.0] drop-shadow-2xl">
+            Nepal <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-300 to-emerald-200 italic">Reimagined</span>
+          </motion.h1>
+          
+          <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="relative max-w-3xl mx-auto flex items-center bg-white/10 backdrop-blur-2xl p-2 rounded-[2.5rem] border border-white/20 shadow-2xl transition-all hover:border-white/40">
+            <FaSearch className="ml-6 text-white/60 text-xl" />
             <input
               type="text"
-              className="rounded-lg outline-none w-[230px] sm:w-2/5 p-2 border border-black bg-opacity-40 bg-white text-white placeholder:text-white font-semibold"
-              placeholder="Search"
+              className="bg-transparent outline-none flex-1 p-5 text-white placeholder:text-white/60 font-medium text-lg"
+              placeholder="Where does your soul want to go?"
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
             />
             <button
-              onClick={() => {
-                navigate(`/search?searchTerm=${search}`);
-              }}
-              className="bg-white w-10 h-10 flex justify-center items-center text-xl font-semibold rounded-full hover:scale-95"
+              onClick={() => navigate(`/search?searchTerm=${search}`)}
+              className="bg-teal-500 hover:bg-teal-600 text-white px-10 py-5 rounded-3xl font-black transition-all active:scale-95 shadow-lg shadow-teal-500/40"
             >
-              Go
-              {/* <FaSearch className="" /> */}
+              Explore
             </button>
-          </div>
-          {/* Request Guide Button */}
-          <div className="w-full flex justify-center mt-6">
-            <button
-              onClick={() => navigate("/request-guide")}
-              className="bg-green-600 text-white px-8 py-3 rounded-full text-lg font-semibold hover:bg-green-700 hover:scale-105 transition-all duration-150 shadow-lg"
-            >
-              🧭 Find Your Perfect Guide
-            </button>
-          </div>
-
-          <div className="w-[90%] max-w-xl flex justify-center mt-6">
-            <button
-              onClick={() => {
-                navigate("/search?offer=true");
-              }}
-              className="flex items-center justify-around gap-x-1 bg-slate-400 text-white p-2 py-1 text-[8px] xxsm:text-sm sm:text-lg border-e border-white rounded-s-full flex-1 hover:scale-105 transition-all duration-150"
-            >
-              Best Offers
-              <LuBadgePercent className="text-2xl" />
-            </button>
-            <button
-              onClick={() => {
-                navigate("/search?sort=packageRating");
-              }}
-              className="flex items-center justify-around gap-x-1 bg-slate-400 text-white p-2 py-1 text-[8px] xxsm:text-sm sm:text-lg border-x border-white flex-1 hover:scale-105 transition-all duration-150"
-            >
-              Top Rated
-              <FaStar className="text-2xl" />
-            </button>
-            <button
-              onClick={() => {
-                navigate("/search?sort=createdAt");
-              }}
-              className="flex items-center justify-around gap-x-1 bg-slate-400 text-white p-2 py-1 text-[8px] xxsm:text-sm sm:text-lg border-x border-white flex-1 hover:scale-105 transition-all duration-150"
-            >
-              Latest
-              <FaCalendar className="text-lg" />
-            </button>
-            <button
-              onClick={() => {
-                navigate("/search?sort=packageTotalRatings");
-              }}
-              className="flex items-center justify-around gap-x-1 bg-slate-400 text-white p-2 py-1 text-[8px] xxsm:text-sm sm:text-lg border-s border-white rounded-e-full flex-1 hover:scale-105 transition-all duration-150"
-            >
-              Most Rated
-              <FaRankingStar className="text-2xl" />
-            </button>
-          </div>
+          </motion.div>
         </div>
-        {/* Nepal Destinations Section */}
-        <div className="w-full bg-gradient-to-b from-blue-50 to-white py-12 px-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-3">
-                Explore Nepal's Top Destinations
-              </h2>
-              <p className="text-gray-600 text-lg">
-                Discover the beauty and culture of Nepal's most iconic places
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Kathmandu */}
-              <div 
-                onClick={() => navigate("/search?searchTerm=kathmandu")}
-                className="group relative overflow-hidden rounded-xl shadow-lg cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-              >
-                <div className="aspect-[4/5] relative">
-                  <img
-                    src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=500&fit=crop&q=75&auto=format"
-                    alt="Kathmandu"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <h3 className="text-2xl font-bold mb-2">Kathmandu</h3>
-                    <p className="text-sm opacity-90">Capital city with ancient temples and vibrant culture</p>
-                  </div>
-                </div>
-              </div>
+      </section>
 
-              {/* Pokhara */}
-              <div 
-                onClick={() => navigate("/search?searchTerm=pokhara")}
-                className="group relative overflow-hidden rounded-xl shadow-lg cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-              >
-                <div className="aspect-[4/5] relative">
-                  <img
-                    src="https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=400&h=500&fit=crop&q=75&auto=format"
-                    alt="Pokhara"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <h3 className="text-2xl font-bold mb-2">Pokhara</h3>
-                    <p className="text-sm opacity-90">Gateway to Annapurna with stunning lake views</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Chitwan */}
-              <div 
-                onClick={() => navigate("/search?searchTerm=chitwan")}
-                className="group relative overflow-hidden rounded-xl shadow-lg cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-              >
-                <div className="aspect-[4/5] relative">
-                  <img
-                    src="https://images.unsplash.com/photo-1564760055775-d63b17a55c44?w=400&h=500&fit=crop&q=75&auto=format"
-                    alt="Chitwan"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <h3 className="text-2xl font-bold mb-2">Chitwan</h3>
-                    <p className="text-sm opacity-90">Wildlife safari and jungle adventures</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Everest Region */}
-              <div 
-                onClick={() => navigate("/search?searchTerm=everest")}
-                className="group relative overflow-hidden rounded-xl shadow-lg cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-              >
-                <div className="aspect-[4/5] relative">
-                  <img
-                    src="https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=400&h=500&fit=crop&q=75&auto=format"
-                    alt="Everest Region"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <h3 className="text-2xl font-bold mb-2">Everest Region</h3>
-                    <p className="text-sm opacity-90">Trek to the base of the world's highest peak</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Nagarkot */}
-              <div 
-                onClick={() => navigate("/search?searchTerm=nagarkot")}
-                className="group relative overflow-hidden rounded-xl shadow-lg cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-              >
-                <div className="aspect-[4/5] relative">
-                  <img
-                    src="https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=400&h=500&fit=crop&q=75&auto=format"
-                    alt="Nagarkot"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <h3 className="text-2xl font-bold mb-2">Nagarkot</h3>
-                    <p className="text-sm opacity-90">Spectacular sunrise views over the Himalayas</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Annapurna */}
-              <div 
-                onClick={() => navigate("/search?searchTerm=annapurna")}
-                className="group relative overflow-hidden rounded-xl shadow-lg cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-              >
-                <div className="aspect-[4/5] relative">
-                  <img
-                    src="https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=400&h=500&fit=crop&q=75&auto=format&sat=-20"
-                    alt="Annapurna"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <h3 className="text-2xl font-bold mb-2">Annapurna</h3>
-                    <p className="text-sm opacity-90">World-famous trekking circuit with diverse landscapes</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bhaktapur */}
-              <div 
-                onClick={() => navigate("/search?searchTerm=bhaktapur")}
-                className="group relative overflow-hidden rounded-xl shadow-lg cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-              >
-                <div className="aspect-[4/5] relative">
-                  <img
-                    src="https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=400&h=500&fit=crop&q=75&auto=format&hue=30"
-                    alt="Bhaktapur"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <h3 className="text-2xl font-bold mb-2">Bhaktapur</h3>
-                    <p className="text-sm opacity-90">Medieval city with preserved architecture and art</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Lumbini Buddhist Pilgrimage */}
-              <div 
-                onClick={() => navigate("/search?searchTerm=lumbini")}
-                className="group relative overflow-hidden rounded-xl shadow-lg cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-              >
-                <div className="aspect-[4/5] relative">
-                  <img
-                    src="https://images.unsplash.com/photo-1548013146-72479768bada?w=400&h=500&fit=crop&q=75&auto=format"
-                    alt="Lumbini Buddhist Pilgrimage"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <h3 className="text-2xl font-bold mb-2">Lumbini Buddhist Pilgrimage</h3>
-                    <p className="text-sm opacity-90">Birthplace of Lord Buddha, UNESCO World Heritage Site</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* main page */}
-        <div className="main p-6 flex flex-col gap-5">
-          {loading && <h1 className="text-center text-2xl">Loading...</h1>}
-          {!loading &&
-            recommendedPackages.length === 0 &&
-            topPackages.length === 0 &&
-            latestPackages.length === 0 &&
-            offerPackages.length === 0 && (
-              <h1 className="text-center text-2xl">No Packages Yet!</h1>
-            )}
-          
-          {/* For users WITHOUT bookings: Show Top Packages first */}
-          {!hasBookings && (
-            <>
-              {/* Top Rated */}
-              {!loading && topPackages.length > 0 && (
-                <>
-                  <h1 className="text-2xl font-semibold">Top Packages</h1>
-                  <div className="grid 2xl:grid-cols-5 xlplus:grid-cols-4 lg:grid-cols-3 sm:grid-cols-2 gap-2 my-3">
-                    {topPackages.map((packageData, i) => {
-                      return <PackageCard key={i} packageData={packageData} />;
-                    })}
-                  </div>
-                </>
-              )}
-              {/* Top Rated */}
-              {/* Recommended */}
-              {!loading && recommendedPackages.length > 0 && (
-                <>
-                  <h1 className="text-2xl font-semibold">
-                    {currentUser ? "Recommended for You" : "Recommended Packages"}
-                  </h1>
-                  <div className="grid 2xl:grid-cols-5 xlplus:grid-cols-4 lg:grid-cols-3 sm:grid-cols-2 gap-2 my-3">
-                    {recommendedPackages.map((packageData, i) => {
-                      return <PackageCard key={i} packageData={packageData} />;
-                    })}
-                  </div>
-                </>
-              )}
-              {/* Recommended */}
-            </>
-          )}
-
-          {/* For users WITH bookings: Show Recommended first */}
-          {hasBookings && (
-            <>
-              {/* Recommended */}
-              {!loading && recommendedPackages.length > 0 && (
-                <>
-                  <h1 className="text-2xl font-semibold">
-                    {currentUser ? "Recommended for You" : "Recommended Packages"}
-                  </h1>
-                  <div className="grid 2xl:grid-cols-5 xlplus:grid-cols-4 lg:grid-cols-3 sm:grid-cols-2 gap-2 my-3">
-                    {recommendedPackages.map((packageData, i) => {
-                      return <PackageCard key={i} packageData={packageData} />;
-                    })}
-                  </div>
-                </>
-              )}
-              {/* Recommended */}
-              {/* Top Rated */}
-              {!loading && topPackages.length > 0 && (
-                <>
-                  <h1 className="text-2xl font-semibold">Top Packages</h1>
-                  <div className="grid 2xl:grid-cols-5 xlplus:grid-cols-4 lg:grid-cols-3 sm:grid-cols-2 gap-2 my-3">
-                    {topPackages.map((packageData, i) => {
-                      return <PackageCard key={i} packageData={packageData} />;
-                    })}
-                  </div>
-                </>
-              )}
-              {/* Top Rated */}
-            </>
-          )}
-
-          {/* latest */}
-          {!loading && latestPackages.length > 0 && (
-            <>
-              <h1 className="text-2xl font-semibold">Latest Packages</h1>
-              <div className="grid 2xl:grid-cols-5 xlplus:grid-cols-4 lg:grid-cols-3 sm:grid-cols-2 gap-2 my-3">
-                {latestPackages.map((packageData, i) => {
-                  return <PackageCard key={i} packageData={packageData} />;
-                })}
-              </div>
-            </>
-          )}
-          {/* latest */}
-          {/* offer */}
-          {!loading && offerPackages.length > 0 && (
-            <>
-              <div className="offers_img"></div>
-              <h1 className="text-2xl font-semibold">Best Offers</h1>
-              <div className="grid 2xl:grid-cols-5 xlplus:grid-cols-4 lg:grid-cols-3 sm:grid-cols-2 gap-2 my-3">
-                {offerPackages.map((packageData, i) => {
-                  return <PackageCard key={i} packageData={packageData} />;
-                })}
-              </div>
-            </>
-          )}
-          {/* offer */}
-        </div>
+      {/* --- QUICK CATEGORIES --- */}
+      <div className="max-w-6xl mx-auto -mt-12 relative z-20 px-4">
+        <motion.div initial={{ y: 50, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} className="grid grid-cols-2 md:grid-cols-4 bg-white rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden">
+          {[
+            { label: 'Best Offers', icon: LuBadgePercent, color: 'text-rose-500', link: '/search?offer=true' },
+            { label: 'Top Rated', icon: FaStar, color: 'text-amber-500', link: '/search?sort=packageRating' },
+            { label: 'Latest', icon: FaCalendar, color: 'text-blue-500', link: '/search?sort=createdAt' },
+            { label: 'Trending', icon: FaRankingStar, color: 'text-purple-500', link: '/search?sort=packageTotalRatings' }
+          ].map((cat, idx) => (
+            <button key={idx} onClick={() => navigate(cat.link)} className="flex items-center justify-center gap-3 py-10 px-4 font-bold text-slate-700 hover:bg-slate-50 transition-all border-r last:border-r-0 border-slate-100 group">
+              <cat.icon className={`text-3xl ${cat.color} group-hover:scale-110 transition-transform`} />
+              <span className="hidden sm:inline text-lg">{cat.label}</span>
+            </button>
+          ))}
+        </motion.div>
       </div>
+
+      {/* --- AI CONCIERGE (Floating) --- */}
+      <div className="fixed bottom-10 right-10 z-[100] flex flex-col items-end">
+        <AnimatePresence>
+          {isAiOpen && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="mb-6 w-[360px] bg-white rounded-[3rem] shadow-3xl border border-slate-100 overflow-hidden flex flex-col"
+            >
+              <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-teal-500 rounded-2xl flex items-center justify-center"><FaRobot className="text-white text-xl" /></div>
+                  <div>
+                    <h4 className="font-black text-xs tracking-widest uppercase">AI Concierge</h4>
+                    <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" /><span className="text-[10px] font-bold text-teal-400 uppercase tracking-tighter">Personalized Suggestion</span></div>
+                  </div>
+                </div>
+                <button onClick={() => setIsAiOpen(false)} className="hover:rotate-90 transition-transform"><FaTimes /></button>
+              </div>
+              <div className="p-8 bg-slate-50/50 min-h-[150px]">
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {aiResponse || "Namaste! I can analyze the current season in Nepal to suggest your perfect luxury trek. Shall we begin?"}
+                </p>
+                {isTyping && <div className="flex gap-1 mt-4"><div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce" /><div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce [animation-delay:0.2s]" /><div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce [animation-delay:0.4s]" /></div>}
+              </div>
+              <div className="p-6 bg-white border-t border-slate-100">
+                <button onClick={getSeasonalRecommendation} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-teal-600 transition-all">
+                  <FaMagic /> Get Seasonal Recommendation
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setIsAiOpen(!isAiOpen)} className="bg-slate-900 text-white w-20 h-20 rounded-[2.2rem] shadow-2xl flex items-center justify-center text-3xl border-4 border-white">
+          {isAiOpen ? <FaTimes /> : <FaRobot className="text-teal-400" />}
+        </motion.button>
+      </div>
+
+      {/* --- SIGNATURE JOURNEY --- */}
+      <section className="py-32 max-w-7xl mx-auto px-6">
+        <div className="grid lg:grid-cols-2 gap-20 items-center">
+          <motion.div initial="hidden" whileInView="visible" variants={fadeInUp} viewport={{ once: true }}>
+            <h2 className="text-teal-600 font-bold uppercase tracking-[0.3em] text-sm mb-4">The Signature Journey</h2>
+            <h3 className="text-5xl font-black text-slate-900 mb-10 leading-tight">A Glimpse into <br/> Himalayan Perfection</h3>
+            <div className="space-y-12 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+              {[
+                { title: "Arrival & High-End Welcome", time: "Day 1", desc: "Private transfer to your luxury boutique hotel with a sunset heritage tour." },
+                { title: "Mountain Flight or Heli-Trek", time: "Day 2", desc: "Champagne breakfast overlooking Everest's summit before exploring hidden valleys." },
+                { title: "Cultural Immersion", time: "Day 3", desc: "Private access to ancient monasteries and exclusive dinner at a Rana palace." }
+              ].map((item, i) => (
+                <div key={i} className="relative pl-12 group">
+                  <div className="absolute left-0 top-1 w-10 h-10 rounded-full bg-white border-2 border-teal-500 flex items-center justify-center z-10 group-hover:bg-teal-500 transition-colors">
+                    <FaCheckCircle className="text-teal-500 group-hover:text-white text-sm" />
+                  </div>
+                  <span className="text-teal-600 font-black text-sm uppercase">{item.time}</span>
+                  <h4 className="text-xl font-bold text-slate-900 mb-2">{item.title}</h4>
+                  <p className="text-slate-500 leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="rounded-[4rem] overflow-hidden h-[700px] shadow-3xl">
+            {/* FIXED IMAGE PATH */}
+            <img src="/images/helicopter view.jpg" className="w-full h-full object-cover" alt="Luxury Travel" />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* --- PACKAGE LISTINGS --- */}
+      <section className="py-24 bg-slate-50/50">
+        <div className="max-w-7xl mx-auto px-6 space-y-32">
+          {loading ? (
+            <div className="text-center py-20 text-slate-400 font-bold animate-pulse text-xl uppercase tracking-widest">Curating Collections...</div>
+          ) : (
+            <>
+              {(hasBookings ? recommendedPackages : topPackages).length > 0 && (
+                <motion.div initial="hidden" whileInView="visible" variants={fadeInUp} viewport={{ once: true }}>
+                  <div className="flex justify-between items-end mb-16">
+                    <div>
+                      <h2 className="text-teal-600 font-bold uppercase tracking-widest text-xs mb-3">Exclusively For You</h2>
+                      <h3 className="text-5xl font-black text-slate-900">{hasBookings ? "Tailored Just For You" : "Most Desired Escapes"}</h3>
+                    </div>
+                    <button onClick={() => navigate('/search')} className="group flex items-center gap-3 font-black text-slate-900 hover:text-teal-600 transition-colors">
+                      View All <FaArrowRight className="group-hover:translate-x-2 transition-transform" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+                    {(hasBookings ? recommendedPackages : topPackages).slice(0, 4).map((pkg, i) => (
+                      <PackageCard key={i} packageData={pkg} />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {latestPackages.length > 0 && (
+                <motion.div initial="hidden" whileInView="visible" variants={fadeInUp} viewport={{ once: true }}>
+                  <h3 className="text-4xl font-black text-slate-900 mb-16 tracking-tight">Newly Discovered Frontiers</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+                    {latestPackages.slice(0, 4).map((pkg, i) => (
+                      <PackageCard key={i} packageData={pkg} />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* --- NEWSLETTER "CLUB" (Glassmorphism) --- */}
+      <section className="py-32 px-6">
+        <motion.div 
+          initial={{ scale: 0.95, opacity: 0 }}
+          whileInView={{ scale: 1, opacity: 1 }}
+          viewport={{ once: true }}
+          className="max-w-6xl mx-auto relative rounded-[4rem] overflow-hidden p-16 md:p-24 text-center bg-slate-900"
+        >
+          {/* Decorative gradients */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/20 blur-[120px] rounded-full -mr-40 -mt-40" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-500/10 blur-[120px] rounded-full -ml-40 -mb-40" />
+          
+          <div className="relative z-10">
+            <div className="bg-white/10 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-10 backdrop-blur-xl border border-white/20 shadow-2xl">
+              <FaEnvelope className="text-teal-400 text-3xl" />
+            </div>
+            <h2 className="text-white text-5xl md:text-6xl font-black mb-8 leading-tight">Join The <br/> Everest Circle</h2>
+            <p className="text-slate-400 text-xl mb-12 max-w-2xl mx-auto leading-relaxed">
+              Gain exclusive access to private luxury trekkings and seasonal openings before they reach the public.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-5 max-w-2xl mx-auto">
+              <input 
+                type="email" 
+                placeholder="Enter your email" 
+                className="flex-1 bg-white/5 border border-white/20 rounded-[1.5rem] px-8 py-5 text-white outline-none focus:border-teal-400 transition-colors text-lg"
+              />
+              <button className="bg-teal-500 text-white px-12 py-5 rounded-[1.5rem] font-black text-lg hover:bg-teal-400 transition-all active:scale-95 shadow-xl shadow-teal-500/30">
+                Join Now
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* --- TESTIMONIALS --- */}
+      <section className="py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col items-center text-center mb-24">
+            <div className="bg-teal-50 text-teal-600 p-4 rounded-3xl mb-8">
+              <FaQuoteLeft className="text-3xl" />
+            </div>
+            <h3 className="text-5xl font-black text-slate-900 tracking-tight">Voices of the Wild</h3>
+          </div>
+          <div className="grid md:grid-cols-2 gap-12">
+            {[
+              { name: "Anjef Dangol", role: "Adventure Architect", text: "The attention to detail in these luxury treks is unmatched. Every camp felt like a boutique retreat amidst the peaks." },
+              { name: "Sita Gurung", role: "Heritage Specialist", text: "Exclusive access to hidden temple rituals made my journey more than just a trip—it was a spiritual awakening." }
+            ].map((t, idx) => (
+              <motion.div 
+                key={idx}
+                whileHover={{ y: -10 }}
+                className="p-12 rounded-[3.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group"
+              >
+                <div className="absolute top-0 left-0 w-2 h-full bg-teal-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-500" />
+                <p className="text-2xl text-slate-600 italic mb-10 font-medium leading-relaxed">"{t.text}"</p>
+                <div className="flex items-center gap-5">
+                  <div className="w-16 h-16 bg-gradient-to-tr from-teal-500 to-emerald-400 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-teal-500/20">
+                    {t.name[0]}
+                  </div>
+                  <div>
+                    <h4 className="font-black text-slate-900 text-xl">{t.name}</h4>
+                    <p className="text-sm text-teal-600 font-bold uppercase tracking-widest">{t.role}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+      
+      {/* --- FOOTER BANNER --- */}
+      <footer className="py-20 border-t border-slate-100 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-wrap justify-center gap-12 opacity-30 grayscale mb-12">
+            <span className="font-black text-2xl tracking-[0.2em]">NEPAL TRAVEL</span>
+            <span className="font-black text-2xl tracking-[0.2em]">HIMALAYAN LUXURY</span>
+            <span className="font-black text-2xl tracking-[0.2em]">ELITE TREKS</span>
+          </div>
+          <p className="text-center text-slate-400 text-[10px] font-black uppercase tracking-[0.5em]">
+            © 2026 Explore Nepal • Redefining High-Altitude Hospitality
+          </p>
+        </div>
+      </footer>
+      
     </div>
   );
 };
