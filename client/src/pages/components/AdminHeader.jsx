@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { FaBell } from "react-icons/fa";
+import { FaBell, FaSignOutAlt, FaShieldAlt, FaChevronRight } from "react-icons/fa";
 import toast from "react-hot-toast";
 import {
   logOutStart,
@@ -18,7 +18,7 @@ const navItems = [
   { label: "Payments", path: "/admin/payments" },
   { label: "Ratings", path: "/admin/ratings" },
   { label: "History", path: "/admin/history" },
-  { label: "Guide Applications", path: "/admin/guide-applications" },
+  { label: "Guide Apps", path: "/admin/guide-applications" },
 ];
 
 const AdminHeader = () => {
@@ -26,81 +26,48 @@ const AdminHeader = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  
   const [pendingApplications, setPendingApplications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unseenCount, setUnseenCount] = useState(0);
   const [showLogoutMenu, setShowLogoutMenu] = useState(false);
-  const notificationRef = React.useRef(null);
-  const profileRef = React.useRef(null);
+  
+  const notificationRef = useRef(null);
+  const profileRef = useRef(null);
 
   useEffect(() => {
     fetchPendingApplications();
   }, []);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
-        setShowNotifications(false);
-      }
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
-        setShowLogoutMenu(false);
-      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) setShowNotifications(false);
+      if (profileRef.current && !profileRef.current.contains(event.target)) setShowLogoutMenu(false);
     };
-
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchPendingApplications = async () => {
     try {
-      const res = await fetch("/api/guide-application/get-all-applications", {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
+      const res = await fetch("/api/guide-application/get-all-applications");
       const data = await res.json();
-      
       if (data.success) {
-        // Get deleted notifications from localStorage
         const deletedNotifications = JSON.parse(localStorage.getItem('adminDeletedApplications') || '[]');
-        
-        // Filter out deleted notifications
-        const pending = data.applications.filter(
-          app => app.status === "pending" && !deletedNotifications.includes(app._id)
-        );
+        const pending = data.applications.filter(app => app.status === "pending" && !deletedNotifications.includes(app._id));
         setPendingApplications(pending);
-        
-        // Get seen notifications from localStorage
         const seenNotifications = JSON.parse(localStorage.getItem('adminSeenApplications') || '[]');
-        const unseen = pending.filter(app => !seenNotifications.includes(app._id));
-        setUnseenCount(unseen.length);
+        setUnseenCount(pending.filter(app => !seenNotifications.includes(app._id)).length);
       }
     } catch (error) {
-      console.log(error);
+      console.error("Admin notification fetch failed", error);
     }
   };
-
-  const isActive = (path) => {
-    if (path === "/admin") {
-      return location.pathname === "/admin";
-    }
-    return location.pathname.startsWith(path);
-  };
-
-  const isAdminViewPage = location.pathname === "/admin/admin-view";
 
   const handleNotificationClick = () => {
     setShowNotifications(!showNotifications);
     if (!showNotifications) {
-      // Mark all as seen
-      const applicationIds = pendingApplications.map(app => app._id);
-      localStorage.setItem('adminSeenApplications', JSON.stringify(applicationIds));
+      localStorage.setItem('adminSeenApplications', JSON.stringify(pendingApplications.map(app => app._id)));
       setUnseenCount(0);
     }
   };
@@ -108,18 +75,12 @@ const AdminHeader = () => {
   const handleDeleteNotification = (appId) => {
     const updated = pendingApplications.filter(app => app._id !== appId);
     setPendingApplications(updated);
-    
-    // Add to deleted notifications in localStorage
-    const deletedNotifications = JSON.parse(localStorage.getItem('adminDeletedApplications') || '[]');
-    if (!deletedNotifications.includes(appId)) {
-      deletedNotifications.push(appId);
-      localStorage.setItem('adminDeletedApplications', JSON.stringify(deletedNotifications));
+    const deleted = JSON.parse(localStorage.getItem('adminDeletedApplications') || '[]');
+    if (!deleted.includes(appId)) {
+      deleted.push(appId);
+      localStorage.setItem('adminDeletedApplications', JSON.stringify(deleted));
     }
-    
-    // Update unseen count
-    const seenNotifications = JSON.parse(localStorage.getItem('adminSeenApplications') || '[]');
-    const unseen = updated.filter(app => !seenNotifications.includes(app._id));
-    setUnseenCount(unseen.length);
+    setUnseenCount(updated.filter(app => !JSON.parse(localStorage.getItem('adminSeenApplications') || '[]').includes(app._id)).length);
   };
 
   const handleLogout = async () => {
@@ -127,138 +88,136 @@ const AdminHeader = () => {
       dispatch(logOutStart());
       const res = await fetch("/api/auth/logout");
       const data = await res.json();
-      if (data?.success !== true) {
-        dispatch(logOutFailure(data?.message));
-        return;
-      }
+      if (!data.success) return dispatch(logOutFailure(data.message));
       dispatch(logOutSuccess());
       navigate("/login");
-      toast.success(data?.message);
+      toast.success("Admin logged out");
     } catch (error) {
-      console.log(error);
       dispatch(logOutFailure(error.message));
     }
   };
 
   return (
-    <header className="bg-sky-500 p-4 flex flex-row items-center justify-between shadow-md">
-      <div className="flex items-center gap-3">
-        <h1
-          className="h-min text-3xl md:text-4xl font-bold text-white"
-        >
-          Welcome Admin
-        </h1>
-        {!isAdminViewPage ? (
-          <Link
-            to="/admin/admin-view"
-            className="text-xs sm:text-sm px-3 py-1 border border-white rounded-lg text-white hover:bg-slate-500 hover:scale-105 transition-all duration-150"
-          >
-            Admin View Site
-          </Link>
-        ) : (
-          <Link
-            to="/admin"
-            className="text-xs sm:text-sm px-3 py-1 border border-white rounded-lg text-white hover:bg-slate-500 hover:scale-105 transition-all duration-150"
-          >
-            Back to Dashboard
-          </Link>
-        )}
-      </div>
+    <header className="bg-slate-900 border-b border-indigo-500/30 sticky top-0 z-50 backdrop-blur-md bg-opacity-95 shadow-2xl">
+      <div className="max-w-[1600px] mx-auto px-6 py-3 flex items-center justify-between">
+        
+        {/* Admin Branding */}
+        <div className="flex items-center gap-4">
+          <div className="bg-indigo-600 p-2 rounded-lg shadow-lg shadow-indigo-500/20">
+            <FaShieldAlt className="text-white text-lg" />
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-sm font-black text-white uppercase tracking-[0.2em]">
+              Control<span className="text-indigo-400">Center</span>
+            </h1>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">System Administrator</p>
+          </div>
+        </div>
 
-      <div className="flex items-center gap-4 text-white">
-        {currentUser && (
-          <>
-            {/* Admin Text (non-clickable) */}
-            <span className="hidden sm:inline text-xs md:text-sm">
-              Admin
-            </span>
+        {/* Dynamic Navigation for Admin Sections */}
+        <nav className="hidden xl:flex items-center gap-1">
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-wider transition-all ${
+                location.pathname === item.path 
+                ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" 
+                : "text-slate-400 hover:text-white"
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
-            {/* Notification Bell */}
-            <div className="relative" ref={notificationRef}>
-              <button
-                onClick={handleNotificationClick}
-                className="relative hover:scale-110 transition-all duration-150"
-              >
-                <FaBell className="text-2xl" />
-                {unseenCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    {unseenCount}
-                  </span>
-                )}
-              </button>
-              {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-                  <div className="p-4 border-b border-gray-200">
-                    <h3 className="font-semibold text-gray-800">New Guide Applications</h3>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    {pendingApplications.length === 0 ? (
-                      <p className="p-4 text-gray-600 text-sm">No pending applications</p>
-                    ) : (
-                      pendingApplications.map((app) => (
-                        <div
-                          key={app._id}
-                          className="p-4 border-b border-gray-100 hover:bg-gray-50 flex justify-between items-start gap-2"
-                        >
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-blue-600 mb-1">
-                              New Guide Application
-                            </p>
-                            <p className="text-sm text-gray-700">
-                              {app.name} applied to become a guide
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {new Date(app.createdAt).toLocaleDateString()}
-                            </p>
-                            <Link
-                              to="/admin/guide-applications"
-                              className="text-xs text-blue-600 hover:underline mt-1 inline-block"
-                              onClick={() => setShowNotifications(false)}
-                            >
-                              View Application →
-                            </Link>
-                          </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteNotification(app._id);
-                            }}
-                            className="text-red-500 hover:text-red-700 text-xs font-semibold"
+        {/* Right Actions */}
+        <div className="flex items-center gap-6 border-l border-slate-800 pl-6">
+          
+          {/* Admin Notifications */}
+          <div className="relative" ref={notificationRef}>
+            <button 
+              onClick={handleNotificationClick}
+              className="text-slate-400 hover:text-indigo-400 transition-colors relative"
+            >
+              <FaBell size={20} />
+              {unseenCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-[10px] font-black text-white w-4 h-4 rounded-full flex items-center justify-center ring-2 ring-slate-900">
+                  {unseenCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <div className="absolute right-0 mt-4 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden ring-1 ring-black ring-opacity-5">
+                <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Pending Tasks</h3>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {pendingApplications.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 text-xs italic">All applications cleared</div>
+                  ) : (
+                    pendingApplications.map((app) => (
+                      <div key={app._id} className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors flex justify-between items-start group">
+                        <div className="flex-1">
+                          <p className="text-[11px] font-black uppercase text-indigo-600 mb-1">New Guide Application</p>
+                          <p className="text-xs text-slate-600 font-medium">{app.fullName || app.name}</p>
+                          <Link 
+                            to="/admin/guide-applications" 
+                            onClick={() => setShowNotifications(false)}
+                            className="text-[10px] text-indigo-500 hover:underline mt-2 flex items-center gap-1 font-bold"
                           >
-                            ✕
-                          </button>
+                            Review Details <FaChevronRight size={8}/>
+                          </Link>
                         </div>
-                      ))
-                    )}
-                  </div>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleDeleteNotification(app._id); }}
+                          className="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+
+          {/* Profile Dropdown */}
+          <div className="relative" ref={profileRef}>
+            <div 
+              onClick={() => setShowLogoutMenu(!showLogoutMenu)}
+              className="flex items-center gap-3 cursor-pointer group"
+            >
+              <img
+                src={currentUser?.avatar || defaultProfileImg}
+                alt="Admin"
+                className="w-9 h-9 rounded-xl border-2 border-slate-700 group-hover:border-indigo-500 transition-all object-cover"
+              />
+              <div className="hidden lg:block">
+                <p className="text-xs font-black text-white uppercase tracking-tighter leading-none mb-1">
+                  {currentUser?.username}
+                </p>
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Online</p>
+                </div>
+              </div>
             </div>
 
-            {/* Profile Picture with Dropdown */}
-            <div className="relative" ref={profileRef}>
-              <img
-                src={currentUser.avatar || defaultProfileImg}
-                alt="Admin"
-                onClick={() => setShowLogoutMenu(!showLogoutMenu)}
-                className="w-9 h-9 rounded-full border border-black cursor-pointer hover:opacity-80 transition-opacity"
-              />
-              {showLogoutMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-                  <button
-                    onClick={() => {
-                      setShowLogoutMenu(false);
-                      handleLogout();
-                    }}
-                    className="w-full text-left px-4 py-3 text-sm text-blue-600 hover:bg-blue-50 rounded-lg font-semibold"
-                  >
-                    🚪 Logout
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
+            {showLogoutMenu && (
+              <div className="absolute right-0 mt-4 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 ring-1 ring-black ring-opacity-5">
+                <button 
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all"
+                >
+                  <FaSignOutAlt size={14}/> Logout Session
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </header>
   );
