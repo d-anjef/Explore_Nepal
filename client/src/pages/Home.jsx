@@ -239,37 +239,7 @@ const Home = () => {
           {isAiOpen ? <FaTimes /> : <FaRobot className="text-teal-400" />}
         </motion.button>
       </div>
-
-      {/* --- SIGNATURE JOURNEY --- */}
-      <section className="py-32 max-w-7xl mx-auto px-6">
-        <div className="grid lg:grid-cols-2 gap-20 items-center">
-          <motion.div initial="hidden" whileInView="visible" variants={fadeInUp} viewport={{ once: true }}>
-            <h2 className="text-teal-600 font-bold uppercase tracking-[0.3em] text-sm mb-4">The Signature Journey</h2>
-            <h3 className="text-5xl font-black text-slate-900 mb-10 leading-tight">A Glimpse into <br/> Himalayan Perfection</h3>
-            <div className="space-y-12 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-              {[
-                { title: "Arrival & High-End Welcome", time: "Day 1", desc: "Private transfer to your luxury boutique hotel with a sunset heritage tour." },
-                { title: "Mountain Flight or Heli-Trek", time: "Day 2", desc: "Champagne breakfast overlooking Everest's summit before exploring hidden valleys." },
-                { title: "Cultural Immersion", time: "Day 3", desc: "Private access to ancient monasteries and exclusive dinner at a Rana palace." }
-              ].map((item, i) => (
-                <div key={i} className="relative pl-12 group">
-                  <div className="absolute left-0 top-1 w-10 h-10 rounded-full bg-white border-2 border-teal-500 flex items-center justify-center z-10 group-hover:bg-teal-500 transition-colors">
-                    <FaCheckCircle className="text-teal-500 group-hover:text-white text-sm" />
-                  </div>
-                  <span className="text-teal-600 font-black text-sm uppercase">{item.time}</span>
-                  <h4 className="text-xl font-bold text-slate-900 mb-2">{item.title}</h4>
-                  <p className="text-slate-500 leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="rounded-[4rem] overflow-hidden h-[700px] shadow-3xl">
-            {/* FIXED IMAGE PATH */}
-            <img src="/images/helicopter view.jpg" className="w-full h-full object-cover" alt="Luxury Travel" />
-          </motion.div>
-        </div>
-      </section>
-
+      
       {/* --- PACKAGE LISTINGS --- */}
       <section className="py-24 bg-slate-50/50">
         <div className="max-w-7xl mx-auto px-6 space-y-32">
@@ -308,6 +278,37 @@ const Home = () => {
               )}
             </>
           )}
+        </div>
+      </section>
+
+
+      {/* --- SIGNATURE JOURNEY --- */}
+      <section className="py-32 max-w-7xl mx-auto px-6">
+        <div className="grid lg:grid-cols-2 gap-20 items-center">
+          <motion.div initial="hidden" whileInView="visible" variants={fadeInUp} viewport={{ once: true }}>
+            <h2 className="text-teal-600 font-bold uppercase tracking-[0.3em] text-sm mb-4">The Signature Journey</h2>
+            <h3 className="text-5xl font-black text-slate-900 mb-10 leading-tight">A Glimpse into <br/> Himalayan Perfection</h3>
+            <div className="space-y-12 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+              {[
+                { title: "Arrival & High-End Welcome", time: "Day 1", desc: "Private transfer to your luxury boutique hotel with a sunset heritage tour." },
+                { title: "Mountain Flight or Heli-Trek", time: "Day 2", desc: "Champagne breakfast overlooking Everest's summit before exploring hidden valleys." },
+                { title: "Cultural Immersion", time: "Day 3", desc: "Private access to ancient monasteries and exclusive dinner at a Rana palace." }
+              ].map((item, i) => (
+                <div key={i} className="relative pl-12 group">
+                  <div className="absolute left-0 top-1 w-10 h-10 rounded-full bg-white border-2 border-teal-500 flex items-center justify-center z-10 group-hover:bg-teal-500 transition-colors">
+                    <FaCheckCircle className="text-teal-500 group-hover:text-white text-sm" />
+                  </div>
+                  <span className="text-teal-600 font-black text-sm uppercase">{item.time}</span>
+                  <h4 className="text-xl font-bold text-slate-900 mb-2">{item.title}</h4>
+                  <p className="text-slate-500 leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="rounded-[4rem] overflow-hidden h-[700px] shadow-3xl">
+            {/* FIXED IMAGE PATH */}
+            <img src="/images/helicopter view.jpg" className="w-full h-full object-cover" alt="Luxury Travel" />
+          </motion.div>
         </div>
       </section>
 
