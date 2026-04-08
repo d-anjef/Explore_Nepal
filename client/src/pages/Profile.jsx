@@ -19,11 +19,16 @@ import {
   FaSuitcase, 
   FaUserEdit, 
   FaUserTie, 
-  FaSignOutAlt,
   FaCamera,
   FaCheckCircle,
   FaClock,
-  FaExclamationTriangle
+  FaPhoneAlt,
+  FaEnvelope,
+  FaHourglassHalf,
+  FaMapMarkerAlt,
+  FaLanguage,
+  FaAward,
+  FaShieldAlt
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -33,25 +38,20 @@ import UpdateProfile from "./user/UpdateProfile";
 import MyHistory from "./user/MyHistory";
 
 const Profile = () => {
-  const { currentUser, loading } = useSelector((state) => state.user);
+  const { currentUser } = useSelector((state) => state.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   
-  // Refs & States for Image Upload
   const fileRef = useRef(null);
   const [file, setFile] = useState(undefined);
   const [filePerc, setFilePerc] = useState(0);
-  const [fileUploadError, setFileUploadError] = useState(false);
   
-  // UI States
   const [activePanelId, setActivePanelId] = useState(1);
-  const [hasGuideApplication, setHasGuideApplication] = useState(false);
+  const [guideStatus, setGuideStatus] = useState('none'); 
+  const [confirmedGuides, setConfirmedGuides] = useState([]);
 
-  // Trigger Upload when file is selected
   useEffect(() => {
-    if (file) {
-      handleFileUpload(file);
-    }
+    if (file) handleFileUpload(file);
   }, [file]);
 
   const handleFileUpload = (file) => {
@@ -66,10 +66,7 @@ const Profile = () => {
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         setFilePerc(Math.round(progress));
       },
-      (error) => {
-        setFileUploadError(true);
-        toast.error("Upload failed. Max size 2MB.");
-      },
+      (error) => toast.error("Upload failed. Max size 2MB."),
       () => {
         getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
           updateUserProfile({ avatar: downloadURL });
@@ -89,80 +86,57 @@ const Profile = () => {
       const data = await res.json();
       if (data.success === false) {
         dispatch(updateUserFailure(data.message));
-        toast.error(data.message);
         return;
       }
       dispatch(updateUserSuccess(data));
-      toast.success("Profile updated successfully!");
+      toast.success("Profile updated!");
     } catch (error) {
       dispatch(updateUserFailure(error.message));
-      toast.error("Could not update profile.");
     }
   };
 
   useEffect(() => {
     if (currentUser) {
       checkGuideStatus();
+      fetchConfirmedGuides();
     }
   }, [currentUser]);
 
   const checkGuideStatus = async () => {
     try {
-      const res = await fetch(`/api/guide-application/check-guide-status/${currentUser.email}`);
+      const res = await fetch(`/api/guide-application/get-status/${currentUser.email}`);
       const data = await res.json();
-      if (data.success) setHasGuideApplication(data.hasApplication);
-    } catch (error) {
-      console.error(error);
-    }
+      if (data.success) setGuideStatus(data.status);
+    } catch (error) { console.error(error); }
   };
 
-  if (!currentUser) {
-    return (
-      <div className="flex items-center justify-center min-h-[70vh]">
-        <div className="text-center p-10 bg-white rounded-3xl shadow-xl border border-slate-100">
-          <p className="text-slate-500 font-bold mb-4">Your session has ended.</p>
-          <button onClick={() => navigate('/sign-in')} className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black">Login</button>
-        </div>
-      </div>
-    );
-  }
+  const fetchConfirmedGuides = async () => {
+    try {
+      const res = await fetch(`/api/guide-message/get-user-messages/${currentUser.email}`);
+      const data = await res.json();
+      if (data.success) {
+        // Filter for messages that have been 'approved' by the guide
+        const accepted = data.messages.filter(msg => msg.status === 'approved');
+        setConfirmedGuides(accepted);
+      }
+    } catch (error) { console.log(error); }
+  };
+
+  if (!currentUser) return null;
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] pb-20">
-      {/* Header / Identity Section */}
+      {/* Identity Header */}
       <div className="bg-white border-b border-slate-200 py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-8">
-          
-          {/* Avatar Upload Container */}
           <div className="relative group">
-            <input 
-              type="file" 
-              ref={fileRef} 
-              hidden 
-              accept="image/*" 
-              onChange={(e) => setFile(e.target.files[0])} 
-            />
+            <input type="file" ref={fileRef} hidden accept="image/*" onChange={(e) => setFile(e.target.files[0])} />
             <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-white shadow-2xl relative cursor-pointer" onClick={() => fileRef.current.click()}>
-              <img 
-                src={currentUser.avatar} 
-                className={`w-full h-full object-cover transition-opacity ${filePerc > 0 && filePerc < 100 ? 'opacity-40' : 'opacity-100'}`} 
-                alt="Profile" 
-              />
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <FaCamera className="text-white text-2xl" />
-              </div>
+              <img src={currentUser.avatar} className="w-full h-full object-cover" alt="Profile" />
               {filePerc > 0 && filePerc < 100 && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/60 font-black text-teal-600 text-xs">
-                  {filePerc}%
-                </div>
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60 font-black text-teal-600 text-xs">{filePerc}%</div>
               )}
             </div>
-            <button 
-              onClick={() => fileRef.current.click()}
-              className="absolute -bottom-2 -right-2 bg-slate-900 text-white p-3 rounded-2xl shadow-lg hover:scale-110 transition-transform"
-            >
-              <FaUserEdit size={14} />
-            </button>
           </div>
 
           <div className="flex-1 text-center md:text-left">
@@ -170,28 +144,118 @@ const Profile = () => {
             <p className="text-slate-500 font-medium mb-4">{currentUser.email}</p>
             <div className="flex flex-wrap justify-center md:justify-start gap-3">
               <span className="px-4 py-1.5 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-full flex items-center gap-2">
-                <FaClock className="text-teal-500" /> Member since 2026
+                <FaCheckCircle className="text-teal-500" /> Verified Traveler
               </span>
-              {hasGuideApplication && (
-                <span className="px-4 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black uppercase tracking-widest rounded-full">
-                  Guide Account
-                </span>
-              )}
             </div>
           </div>
-
-          {!hasGuideApplication && (
-            <Link to="/guide-application" className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center gap-3">
-              <FaUserTie /> Become a Guide
-            </Link>
-          )}
         </div>
+
+        {/* CONFIRMED GUIDE SECTION */}
+        {confirmedGuides.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-6xl mx-auto mt-12"
+          >
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">Your Confirmed Travel Partner</h2>
+              <div className="h-px flex-1 bg-slate-100 ml-6"></div>
+            </div>
+            
+            <div className="grid lg:grid-cols-2 gap-8">
+              {confirmedGuides.map((guide) => (
+                <div key={guide._id} className="bg-white border-2 border-emerald-500/10 rounded-[3rem] p-10 shadow-2xl shadow-emerald-900/5 relative overflow-hidden">
+                  
+                  {/* Luxury Status Badge */}
+                  <div className="absolute top-0 right-0 bg-emerald-600 text-white px-8 py-3 rounded-bl-3xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center gap-2">
+                    <FaShieldAlt className="animate-pulse" /> Ready to Travel
+                  </div>
+
+                  <div className="flex items-center gap-8 mb-10">
+                    <div className="w-24 h-24 bg-emerald-50 rounded-[2rem] flex items-center justify-center text-emerald-600 shadow-inner border border-emerald-100">
+                      <FaUserTie size={40} />
+                    </div>
+                    <div>
+                      <h3 className="text-3xl font-black text-slate-900 tracking-tight">{guide.guideName}</h3>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">Verified Professional</span>
+                        <div className="flex items-center text-amber-500 gap-1 text-sm font-black">
+                           <FaAward /> Expert
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-12 border-t border-slate-50 pt-10">
+                    {/* Primary Contact */}
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Official Email</p>
+                      <p className="text-sm text-slate-800 font-bold flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-500">
+                          <FaEnvelope size={14} />
+                        </div>
+                        {guide.guideEmail}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Direct Line</p>
+                      <p className="text-sm text-slate-800 font-bold flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-500">
+                          <FaPhoneAlt size={14} />
+                        </div>
+                        {guide.userPhone}
+                      </p>
+                    </div>
+
+                    {/* Trip Details */}
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Planned Duration</p>
+                      <p className="text-sm text-slate-800 font-bold flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-500">
+                          <FaHourglassHalf size={14} />
+                        </div>
+                        {guide.tourDays} Days Adventure
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Meeting Protocol</p>
+                      <p className="text-sm text-slate-800 font-bold flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-500">
+                          <FaMapMarkerAlt size={14} />
+                        </div>
+                        Hotel/Airport Pickup
+                      </p>
+                    </div>
+
+                    {/* Skills & Status */}
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Language Proficiency</p>
+                      <p className="text-sm text-slate-800 font-bold flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-500">
+                          <FaLanguage size={18} />
+                        </div>
+                        English, Nepali, Hindi
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Booking Status</p>
+                      <p className="text-xs text-emerald-600 font-black uppercase flex items-center gap-2 py-2">
+                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                        Active Engagement
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
 
-      {/* Main Dashboard Grid */}
       <div className="max-w-6xl mx-auto px-6 mt-12 grid lg:grid-cols-4 gap-10">
-        
-        {/* Navigation Sidebar */}
         <aside className="lg:col-span-1 space-y-2">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-4">Account Dashboard</p>
           {[
@@ -208,15 +272,12 @@ const Profile = () => {
                 : "text-slate-500 hover:bg-white hover:text-slate-900"
               }`}
             >
-              <tab.icon className={activePanelId === tab.id ? "text-teal-400" : "text-slate-400"} />
+              <tab.icon className={activePanelId === tab.id ? "text-emerald-400" : "text-slate-400"} />
               {tab.name}
             </button>
           ))}
-          
-  
         </aside>
 
-        {/* Content Display Area */}
         <main className="lg:col-span-3">
           <AnimatePresence mode="wait">
             <motion.div
@@ -229,25 +290,24 @@ const Profile = () => {
               {activePanelId === 1 && (
                 <section className="space-y-6">
                   <div className="flex items-center justify-between mb-8">
-                    <h2 className="text-2xl font-black text-slate-900">My Active Bookings</h2>
-                    <span className="bg-teal-100 text-teal-700 text-xs font-black px-3 py-1 rounded-lg">LIVE UPDATES</span>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Active Bookings</h2>
+                    <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-3 py-1 rounded-lg uppercase">Real-time status</span>
                   </div>
-                  {/* Here MyBookings should handle the logic for displaying individual cards */}
                   <MyBookings />
                 </section>
               )}
 
               {activePanelId === 2 && (
                 <section className="space-y-6">
-                  <h2 className="text-2xl font-black text-slate-900 mb-8">Adventure History</h2>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-8">Adventure History</h2>
                   <MyHistory />
                 </section>
               )}
 
               {activePanelId === 3 && (
                 <section className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
-                  <h2 className="text-2xl font-black text-slate-900 mb-2">Security & Identity</h2>
-                  <p className="text-slate-500 text-sm font-medium mb-10">Manage your password and contact preferences.</p>
+                  <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Security & Identity</h2>
+                  <p className="text-slate-500 text-sm font-medium mb-10">Manage your profile credentials and security.</p>
                   <UpdateProfile />
                 </section>
               )}
