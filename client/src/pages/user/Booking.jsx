@@ -1,339 +1,228 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { FaClock, FaMapMarkerAlt } from "react-icons/fa";
+import { FaClock, FaMapMarkerAlt, FaUsers, FaCalendarAlt, FaChevronDown, FaChevronUp, FaShieldAlt, FaStar } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router";
+
+const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=600&fit=crop";
 
 const Booking = () => {
   const { currentUser } = useSelector((state) => state.user);
   const params = useParams();
   const navigate = useNavigate();
-  const [packageData, setPackageData] = useState({
-    packageName: "",
-    packageDescription: "",
-    packageDestination: "",
-    packageDays: 1,
-    packageNights: 1,
-    packageAccommodation: "",
-    packageMeals: "",
-    packageActivities: "",
-    packagePrice: 500,
-    packageDiscountPrice: 0,
-    packageOffer: false,
-    packageRating: 0,
-    packageTotalRatings: 0,
-    packageImages: [],
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+
+  const [packageData, setPackageData] = useState({});
   const [bookingData, setBookingData] = useState({
     totalPrice: 0,
     packageDetails: null,
     buyer: null,
     persons: 1,
-    date: null,
+    date: "",
   });
+
+  const [loading, setLoading] = useState(false);
   const [currentDate, setCurrentDate] = useState("");
+  const [openSection, setOpenSection] = useState(0);
 
   const getPackageData = async () => {
     try {
       setLoading(true);
-      const res = await fetch(
-        `/api/package/get-package-data/${params?.packageId}`
-      );
+      const res = await fetch(`/api/package/get-package-data/${params?.packageId}`);
       const data = await res.json();
       if (data?.success) {
-        setPackageData({
-          packageName: data?.packageData?.packageName,
-          packageDescription: data?.packageData?.packageDescription,
-          packageDestination: data?.packageData?.packageDestination,
-          packageDays: data?.packageData?.packageDays,
-          packageNights: data?.packageData?.packageNights,
-          packageAccommodation: data?.packageData?.packageAccommodation,
-          packageMeals: data?.packageData?.packageMeals,
-          packageActivities: data?.packageData?.packageActivities,
-          packagePrice: data?.packageData?.packagePrice,
-          packageDiscountPrice: data?.packageData?.packageDiscountPrice,
-          packageOffer: data?.packageData?.packageOffer,
-          packageRating: data?.packageData?.packageRating,
-          packageTotalRatings: data?.packageData?.packageTotalRatings,
-          packageImages: data?.packageData?.packageImages,
-        });
-        setLoading(false);
+        setPackageData(data.packageData);
       } else {
-        setError(data?.message || "Something went wrong!");
-        setLoading(false);
+        toast.error(data?.message);
       }
-    } catch (error) {
-      console.log(error);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // simple booking without online payment
-  const handleBookPackage = async () => {
-    if (
-      !bookingData.packageDetails ||
-      !bookingData.buyer ||
-      bookingData.totalPrice <= 0 ||
-      bookingData.persons <= 0 ||
-      !bookingData.date
-    ) {
-      toast.error("Please select a date and number of persons");
+  const handleBookPackage = () => {
+    if (!bookingData.date) {
+      toast.error("Please select a travel date");
       return;
     }
-
-    // extra safety: prevent booking for past dates
-    const today = new Date().toISOString().substring(0, 10);
-    if (bookingData.date < today) {
-      toast.error("Please select a future date for your trip");
-      return;
-    }
-
-    // Navigate to Stripe checkout with booking details
     navigate("/stripe-checkout", {
       state: {
-        bookingDetails: {
-          ...bookingData,
-          packageName: packageData.packageName,
-          packageId: params?.packageId,
-        },
-        packageData: packageData,
+        bookingDetails: { ...bookingData, packageName: packageData.packageName, packageId: params?.packageId },
+        packageData,
       },
     });
   };
 
   useEffect(() => {
-    if (params?.packageId) {
-      getPackageData();
-    }
-    let date = new Date().toISOString().substring(0, 10);
-    let d = date.substring(0, 8) + (parseInt(date.substring(8)) + 1);
-    setCurrentDate(d);
+    if (params?.packageId) getPackageData();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setCurrentDate(tomorrow.toISOString().split("T")[0]);
   }, [params?.packageId]);
 
   useEffect(() => {
-    if (packageData && params?.packageId) {
-      setBookingData((prev) => {
-        const pricePerPerson =
-          packageData?.packageDiscountPrice || packageData?.packagePrice;
-        return {
-          ...prev,
-          packageDetails: params?.packageId,
-          buyer: currentUser?._id,
-          totalPrice: pricePerPerson * prev.persons,
-        };
-      });
+    if (packageData) {
+      const price = packageData.packageDiscountPrice || packageData.packagePrice || 0;
+      setBookingData((prev) => ({
+        ...prev,
+        packageDetails: params.packageId,
+        buyer: currentUser?._id,
+        totalPrice: price * prev.persons,
+      }));
     }
-  }, [packageData, params, currentUser?._id]);
+  }, [packageData, currentUser]);
+
+  const pricePerPerson = packageData.packageDiscountPrice || packageData.packagePrice || 0;
+
+  const sections = [
+    { title: "Accommodation", content: packageData.packageAccommodation },
+    { title: "Meals", content: packageData.packageMeals },
+    { title: "Activities", content: packageData.packageActivities },
+  ];
 
   return (
-    <div className="w-full flex flex-col items-center">
-      <div className="w-[95%] flex flex-col items-center p-6 rounded shadow-2xl gap-3">
-        <h1 className="text-center font-bold text-2xl">Book Package</h1>
-        {/* user info */}
-        <div className="w-full flex flex-wrap justify-center gap-2">
-          <div className="pr-3 md:border-r md:pr-6">
-            <div className="flex flex-col p-2 w-64 xsm:w-72 h-fit gap-2">
-              <div className="flex flex-col">
-                <label htmlFor="username" className="font-semibold">
-                  Username:
-                </label>
-                <input
-                  type="text"
-                  id="username"
-                  className="p-1 rounded border border-black"
-                  value={currentUser.username}
-                  disabled
-                />
-              </div>
-              <div className="flex flex-col">
-                <label htmlFor="email" className="font-semibold">
-                  Email:
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  className="p-1 rounded border border-black"
-                  value={currentUser.email}
-                  disabled
-                />
-              </div>
-              <div className="flex flex-col">
-                <label htmlFor="address" className="font-semibold">
-                  Address:
-                </label>
-                <textarea
-                  maxLength={200}
-                  type="text"
-                  id="address"
-                  className="p-1 rounded border border-black resize-none"
-                  value={currentUser.address}
-                  disabled
-                />
-              </div>
-              <div className="flex flex-col">
-                <label htmlFor="phone" className="font-semibold">
-                  Phone:
-                </label>
-                <input
-                  type="text"
-                  id="phone"
-                  className="p-1 rounded border border-black"
-                  value={currentUser.phone}
-                  disabled
-                />
-              </div>
-            </div>
-          </div>
-          {/* package info */}
-          <div className="pl-3 md:border-l md:pl-6">
-            <div className="flex flex-col gap-1">
-              <div className="flex flex-wrap gap-2">
-                <img
-                  className="w-28"
-                  src={packageData.packageImages?.[0] || "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop"}
-                  alt="Package image"
-                  onError={(e) => {
-                    e.target.src = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop";
-                  }}
-                />
-                <div>
-                  <p className="font-semibold text-lg mb-1 capitalize">
-                    {packageData.packageName}
-                  </p>
-                  <p className="flex gap-2 text-green-700 font-semibold capitalize">
-                    <FaMapMarkerAlt /> {packageData.packageDestination}
-                  </p>
-                  {/* days & nights */}
-                  {(+packageData.packageDays > 0 ||
-                    +packageData.packageNights > 0) && (
-                    <p className="flex items-center gap-2">
-                      <FaClock />
-                      {+packageData.packageDays > 0 &&
-                        (+packageData.packageDays > 1
-                          ? packageData.packageDays + " Days"
-                          : packageData.packageDays + " Day")}
-                      {+packageData.packageDays > 0 &&
-                        +packageData.packageNights > 0 &&
-                        " - "}
-                      {+packageData.packageNights > 0 &&
-                        (+packageData.packageNights > 1
-                          ? packageData.packageNights + " Nights"
-                          : packageData.packageNights + " Night")}
-                    </p>
-                  )}
+    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 pb-20">
+      <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
+        
+        {/* BREADCRUMB / MINI HEADER */}
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-teal-600 mb-6">
+          <FaStar className="text-[10px]" />
+          <span>Premium Travel Experience</span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          
+          {/* LEFT COLUMN: 7/12 width */}
+          <div className="lg:col-span-8 space-y-8">
+            
+            {/* HERO IMAGE */}
+            <div className="relative h-[400px] md:h-[500px] w-full rounded-3xl overflow-hidden shadow-2xl group">
+              <img
+                src={packageData.packageImages?.[0] || DEFAULT_IMAGE}
+                alt={packageData.packageName}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                onError={(e) => (e.target.src = DEFAULT_IMAGE)}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+              <div className="absolute bottom-8 left-8 right-8">
+                <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-4 leading-tight">
+                  {packageData.packageName}
+                </h1>
+                <div className="flex flex-wrap items-center gap-6 text-white/90 font-medium">
+                  <span className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
+                    <FaMapMarkerAlt className="text-teal-400" /> {packageData.packageDestination}
+                  </span>
+                  <span className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
+                    <FaClock className="text-teal-400" /> {packageData.packageDays}D / {packageData.packageNights}N
+                  </span>
                 </div>
               </div>
-              <div className="flex flex-col my-1">
-                <label className="font-semibold" htmlFor="date">
-                  Select Date:
-                </label>
-                <input
-                  type="date"
-                  min={currentDate !== "" ? currentDate : ""}
-                  //   min={"2024-01-23"}
-                  id="date"
-                  className="w-max border rounded"
-                  onChange={(e) => {
-                    setBookingData({ ...bookingData, date: e.target.value });
-                  }}
-                />
-              </div>
-              {/* price */}
-              <p className="flex gap-1 text-xl font-semibold my-1">
-                Price:
-                {packageData.packageOffer ? (
-                  <>
-                    <span className="line-through text-gray-700">
-                      Rs {packageData.packagePrice}
-                    </span>{" "}
-                    -<span>Rs {packageData.packageDiscountPrice}</span>
-                    <span className="text-lg ml-2 bg-green-700 p-1 rounded text-white">
-                      {Math.floor(
-                        ((+packageData.packagePrice -
-                          +packageData.packageDiscountPrice) /
-                          +packageData.packagePrice) *
-                          100
-                      )}
-                      % Off
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-green-700">
-                    Rs {packageData.packagePrice}
-                  </span>
-                )}
+            </div>
+
+            {/* DESCRIPTION */}
+            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+              <h2 className="text-2xl font-bold mb-4">The Experience</h2>
+              <p className="text-slate-600 leading-relaxed text-lg">
+                {packageData.packageDescription || "Discover an unparalleled journey through the world's most breathtaking landscapes. This curated package offers a blend of luxury, culture, and adventure designed for the modern traveler."}
               </p>
-              {/* price */}
-              <div className="flex border-2 w-max">
-                <button
-                  type="button"
-                  className="p-2 py-1 font-semibold"
-                  onClick={() => {
-                    setBookingData((prev) => {
-                      if (prev.persons <= 1) return prev;
-                      const newPersons = prev.persons - 1;
-                      const pricePerPerson =
-                        packageData.packageDiscountPrice ||
-                        packageData.packagePrice;
-                      return {
-                        ...prev,
-                        persons: newPersons,
-                        totalPrice: pricePerPerson * newPersons,
-                      };
-                    });
-                  }}
-                >
-                  -
-                </button>
-                <input
-                  value={bookingData.persons}
-                  disabled
-                  type="text"
-                  className="border w-10 text-center text-lg"
-                />
-                <button
-                  type="button"
-                  className="p-2 py-1 font-semibold"
-                  onClick={() => {
-                    setBookingData((prev) => {
-                      if (prev.persons >= 10) return prev;
-                      const newPersons = prev.persons + 1;
-                      const pricePerPerson =
-                        packageData.packageDiscountPrice ||
-                        packageData.packagePrice;
-                      return {
-                        ...prev,
-                        persons: newPersons,
-                        totalPrice: pricePerPerson * newPersons,
-                      };
-                    });
-                  }}
-                >
-                  +
-                </button>
+            </div>
+
+            {/* ACCORDION */}
+            <div className="space-y-4">
+              {sections.map((sec, i) => (
+                <div key={i} className={`bg-white rounded-2xl border transition-all duration-300 ${openSection === i ? 'border-teal-500 shadow-md' : 'border-slate-100 shadow-sm'}`}>
+                  <button 
+                    onClick={() => setOpenSection(openSection === i ? null : i)}
+                    className="w-full flex items-center justify-between p-6 text-left"
+                  >
+                    <span className="text-lg font-bold text-slate-800">{sec.title}</span>
+                    <div className={`p-2 rounded-full transition-colors ${openSection === i ? 'bg-teal-500 text-white' : 'bg-slate-50 text-slate-400'}`}>
+                      {openSection === i ? <FaChevronUp /> : <FaChevronDown />}
+                    </div>
+                  </button>
+                  {openSection === i && (
+                    <div className="px-6 pb-6 text-slate-600 animate-fadeIn">
+                      <div className="h-px bg-slate-100 mb-4" />
+                      {sec.content || "Information regarding this section is currently being updated for the upcoming season."}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: 5/12 width (Sticky Sidebar) */}
+          <div className="lg:col-span-4">
+            <div className="sticky top-8 bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100">
+              <div className="flex justify-between items-end mb-8">
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Price</p>
+                  <h2 className="text-3xl font-black text-slate-900">
+                    Rs {bookingData.totalPrice}
+                  </h2>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-teal-600">Per Person</p>
+                  <p className="text-lg font-bold">Rs {pricePerPerson}</p>
+                </div>
               </div>
-              <p className="text-xl font-semibold">
-                Total Price:
-                <span className="text-green-700">
-                  {" "}Rs{" "}
-                  {packageData.packageDiscountPrice
-                    ? packageData.packageDiscountPrice * bookingData.persons
-                    : packageData.packagePrice * bookingData.persons}
-                </span>
-              </p>
-              <div className="my-2 max-w-[300px] gap-1">
-                <p className="font-semibold mb-2">Booking:</p>
-                <button
-                  className="w-full p-3 mb-3 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={handleBookPackage}
-                  disabled={!bookingData.date || !currentUser?.address || loading}
-                >
-                  Proceed to Payment
-                </button>
+
+              {/* INPUTS */}
+              <div className="space-y-6">
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
+                    <FaCalendarAlt className="text-teal-500" /> Travel Date
+                  </label>
+                  <input
+                    type="date"
+                    min={currentDate}
+                    className="w-full bg-slate-50 border-2 border-transparent focus:border-teal-500 focus:bg-white rounded-xl p-4 transition-all outline-none font-medium"
+                    onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
+                    <FaUsers className="text-teal-500" /> Guest Count
+                  </label>
+                  <div className="flex items-center justify-between bg-slate-50 rounded-xl p-2 border-2 border-slate-50">
+                    <button 
+                      onClick={() => {
+                        const p = Math.max(1, bookingData.persons - 1);
+                        setBookingData({...bookingData, persons: p, totalPrice: p * pricePerPerson});
+                      }}
+                      className="w-12 h-12 flex items-center justify-center bg-white rounded-lg shadow-sm text-xl font-bold hover:text-teal-600 transition-colors"
+                    >-</button>
+                    <span className="text-lg font-black">{bookingData.persons}</span>
+                    <button 
+                      onClick={() => {
+                        const p = Math.min(10, bookingData.persons + 1);
+                        setBookingData({...bookingData, persons: p, totalPrice: p * pricePerPerson});
+                      }}
+                      className="w-12 h-12 flex items-center justify-center bg-white rounded-lg shadow-sm text-xl font-bold hover:text-teal-600 transition-colors"
+                    >+</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="my-8 h-px bg-slate-100" />
+
+              <button 
+                onClick={handleBookPackage}
+                disabled={!bookingData.date || loading}
+                className="w-full bg-slate-900 text-white rounded-2xl py-5 font-bold text-lg hover:bg-teal-600 hover:shadow-lg hover:shadow-teal-200 transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none active:scale-95"
+              >
+                {loading ? "Processing..." : "Confirm Booking"}
+              </button>
+
+              <div className="mt-6 flex items-center justify-center gap-2 text-xs font-bold text-slate-400 uppercase">
+                <FaShieldAlt className="text-teal-500 text-sm" />
+                Secure Checkout & Instant Confirmation
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router";
 import { Link } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import SwiperCore from "swiper";
-import { Navigation } from "swiper/modules";
+import { Navigation, Pagination } from "swiper/modules";
 import "swiper/css/bundle";
 import {
   FaArrowDown,
@@ -14,6 +14,12 @@ import {
   FaClock,
   FaMapMarkerAlt,
   FaShare,
+  FaChevronDown,
+  FaChevronUp,
+  FaHotel,
+  FaRunning,
+  FaUtensils,
+  FaCheck,
 } from "react-icons/fa";
 import Rating from "@mui/material/Rating";
 import { useSelector } from "react-redux";
@@ -21,10 +27,11 @@ import RatingCard from "./RatingCard";
 import "./styles/Package.css";
 
 const Package = () => {
-  SwiperCore.use([Navigation]);
+  SwiperCore.use([Navigation, Pagination]);
   const { currentUser } = useSelector((state) => state.user);
   const params = useParams();
   const navigate = useNavigate();
+  
   const [packageData, setPackageData] = useState({
     packageName: "",
     packageDescription: "",
@@ -42,6 +49,7 @@ const Package = () => {
     packageTotalRatings: 0,
     packageImages: [],
   });
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -56,6 +64,8 @@ const Package = () => {
   const [packageRatings, setPackageRatings] = useState([]);
   const [ratingGiven, setRatingGiven] = useState(false);
   const [hasBooked, setHasBooked] = useState(false);
+  const [expandedSection, setExpandedSection] = useState(null);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   const getPackageData = async () => {
     try {
@@ -196,262 +206,349 @@ const Package = () => {
         )
       : 0;
 
-  return (
-    <div className="w-full">
-      {loading && (
-        <p className="text-center font-semibold" id="loading">
-          Loading...
-        </p>
-      )}
-      {error && (
-        <div className="flex flex-col w-full items-center gap-2">
-          <p className="text-center text-red-700">Something went wrong!</p>
-          <Link
-            className="bg-slate-600 text-white p-3 py-2 rounded-lg w-min"
-            to="/home"
-          >
-            Back
-          </Link>
-        </div>
-      )}
-      {packageData && !loading && !error && (
-        <div className="w-full">
-          {/* Image Slider */}
-          <Swiper navigation>
-            {packageData?.packageImages?.length > 0 ? (
-              packageData.packageImages.map((imageUrl, i) => (
-                <SwiperSlide key={i}>
-                  <div
-                    style={{
-                      background: `url(${imageUrl}) center no-repeat`,
-                      backgroundSize: "cover",
-                    }}
-                  ></div>
-                </SwiperSlide>
-              ))
-            ) : (
-              <SwiperSlide>
-                <div
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
-                  }}
-                ></div>
-              </SwiperSlide>
-            )}
-          </Swiper>
+  const toggleSection = (section) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
 
-          {/* Share Button */}
-          <div
-            className="absolute top-[13%] right-[3%] z-10 border rounded-full w-12 h-12 flex justify-center items-center bg-slate-100 cursor-pointer"
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+          <p className="mt-4 text-slate-600 dark:text-slate-300 font-medium">Loading package details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col w-full items-center justify-center min-h-screen gap-4">
+        <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-6 max-w-md text-center">
+          <p className="text-red-700 dark:text-red-100 font-semibold">Something went wrong!</p>
+          <p className="text-red-600 dark:text-red-200 text-sm mt-2">{error}</p>
+        </div>
+        <Link
+          className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-lg transition-colors"
+          to="/home"
+        >
+          Back to Home
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full bg-white dark:bg-slate-900 min-h-screen">
+      {/* Header Navigation */}
+      <div className="border-b border-slate-200 dark:border-slate-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+          <button
+            onClick={() => navigate("/home")}
+            className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 font-semibold uppercase text-sm tracking-wide transition-colors"
+          >
+            <FaArrowLeft size={14} />
+            Back To Home
+          </button>
+          <button
             onClick={() => {
               navigator.clipboard.writeText(window.location.href);
               setCopied(true);
-              setTimeout(() => {
-                setCopied(false);
-              }, 2000);
+              setTimeout(() => setCopied(false), 2000);
             }}
+            className="flex items-center gap-2 text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-semibold uppercase text-sm tracking-wide transition-colors"
             title="Share this package"
           >
-            <FaShare className="text-slate-500" />
+            <FaShare size={14} />
+            Share
+          </button>
+        </div>
+      </div>
+
+      {/* Copy Notification */}
+      {copied && (
+        <div className="fixed top-20 right-4 z-50 rounded-lg bg-green-500 text-white p-4 shadow-lg animate-pulse font-medium">
+          ✓ Link copied!
+        </div>
+      )}
+
+      {/* Main Content - Two Column Layout */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+          
+          {/* LEFT COLUMN - LARGE IMAGE */}
+          <div className="flex items-start justify-center order-2 lg:order-1">
+            <div className="w-full max-w-md bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden" style={{ aspectRatio: "1/1" }}>
+              <Swiper
+                navigation
+                pagination={{ clickable: true }}
+                className="h-full w-full"
+              >
+                {packageData?.packageImages?.length > 0 ? (
+                  packageData.packageImages.map((imageUrl, i) => (
+                    <SwiperSlide key={i} className="h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800">
+                      <img
+                        src={imageUrl}
+                        alt={`${packageData?.packageName} - image ${i + 1}`}
+                        className="h-full w-full object-contain p-4"
+                      />
+                    </SwiperSlide>
+                  ))
+                ) : (
+                  <SwiperSlide className="h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800">
+                    <img
+                      src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600&h=600&fit=crop"
+                      alt="Placeholder"
+                      className="h-full w-full object-contain p-4"
+                    />
+                  </SwiperSlide>
+                )}
+              </Swiper>
+            </div>
           </div>
 
-          {/* Copy Notification */}
-          {copied && (
-            <p className="fixed top-[23%] right-[5%] z-10 rounded-md bg-slate-100 p-2">
-              Link copied!
+          {/* RIGHT COLUMN - PACKAGE DETAILS */}
+          <div className="flex flex-col justify-start order-1 lg:order-2 space-y-6">
+            
+            {/* Category/Breadcrumb */}
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+              {packageData?.packageCategory || "Travel Package"}
             </p>
-          )}
 
-          {/* Back Button */}
-          <div
-            className="absolute top-[13%] left-[3%] z-10 border rounded-full w-12 h-12 flex justify-center items-center bg-slate-100 cursor-pointer"
-            onClick={() => {
-              navigate("/home");
-            }}
-            title="Go back"
-          >
-            <FaArrowLeft className="text-slate-500" />
-          </div>
-
-          {/* Main Content */}
-          <div className="w-full flex flex-col p-5 gap-2">
             {/* Package Name */}
-            <p className="text-2xl font-bold capitalize">
+            <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white leading-tight">
               {packageData?.packageName}
-            </p>
+            </h1>
 
             {/* Price Section */}
-            <p className="flex gap-1 text-2xl font-semibold my-3">
-              {packageData?.packageOffer && packageData?.packageDiscountPrice ? (
-                <>
-                  <span className="line-through text-gray-700">
-                    Rs {packageData?.packagePrice?.toLocaleString("en-IN")}
-                  </span>
-                  <span>Rs {packageData?.packageDiscountPrice?.toLocaleString("en-IN")}</span>
-                  <span className="text-lg ml-2 bg-green-700 p-1 rounded text-white">
-                    {discountPercentage}% Off
-                  </span>
-                </>
-              ) : (
-                <span>Rs {packageData?.packagePrice?.toLocaleString("en-IN")}</span>
-              )}
-            </p>
-
-            {/* Destination */}
-            <p className="text-green-700 flex items-center gap-1 text-lg capitalize">
-              <FaMapMarkerAlt />
-              {packageData?.packageDestination}
-            </p>
-
-            {/* Category */}
-            {packageData?.packageCategory && (
-              <p className="text-blue-600 font-medium text-lg capitalize">
-                Category: {packageData?.packageCategory}
-              </p>
-            )}
-
-            {/* Duration */}
-            {(+packageData?.packageDays > 0 || +packageData?.packageNights > 0) && (
-              <p className="flex items-center gap-2">
-                <FaClock />
-                {+packageData?.packageDays > 0 &&
-                  (+packageData?.packageDays > 1
-                    ? `${packageData?.packageDays} Days`
-                    : `${packageData?.packageDays} Day`)}
-                {+packageData?.packageDays > 0 && +packageData?.packageNights > 0 && " - "}
-                {+packageData?.packageNights > 0 &&
-                  (+packageData?.packageNights > 1
-                    ? `${packageData?.packageNights} Nights`
-                    : `${packageData?.packageNights} Night`)}
-              </p>
-            )}
-
-            {/* Rating Display */}
-            {packageData?.packageTotalRatings > 0 && (
-              <div className="flex">
-                <Rating
-                  value={packageData?.packageRating || 0}
-                  readOnly
-                  precision={0.1}
-                />
-                <p>({packageData?.packageTotalRatings})</p>
-              </div>
-            )}
-
-            {/* Description */}
-            <div className="w-full flex flex-col mt-2">
-              <p className="break-all flex flex-col font-medium">
-                {packageData?.packageDescription?.length > 150 ? (
+            <div className="space-y-3">
+              <p className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">
+                {packageData?.packageOffer && packageData?.packageDiscountPrice ? (
                   <>
-                    <span id="desc">
-                      {packageData?.packageDescription.substring(0, 150)}...
+                    <span className="line-through text-slate-400 dark:text-slate-600 text-2xl mr-3">
+                      Rs {packageData?.packagePrice?.toLocaleString("en-IN")}
                     </span>
-                    <button
-                      id="moreBtn"
-                      onClick={() => {
-                        const descEl = document.getElementById("desc");
-                        const moreBtnEl = document.getElementById("moreBtn");
-                        const lessBtnEl = document.getElementById("lessBtn");
-                        if (descEl && moreBtnEl && lessBtnEl) {
-                          descEl.innerText = packageData?.packageDescription;
-                          moreBtnEl.style.display = "none";
-                          lessBtnEl.style.display = "flex";
-                        }
-                      }}
-                      className="w-max font-semibold flex items-center gap-2 text-gray-600 hover:underline"
-                    >
-                      More <FaArrowDown />
-                    </button>
-                    <button
-                      id="lessBtn"
-                      onClick={() => {
-                        const descEl = document.getElementById("desc");
-                        const moreBtnEl = document.getElementById("moreBtn");
-                        const lessBtnEl = document.getElementById("lessBtn");
-                        if (descEl && moreBtnEl && lessBtnEl) {
-                          descEl.innerText =
-                            packageData?.packageDescription.substring(0, 150) + "...";
-                          lessBtnEl.style.display = "none";
-                          moreBtnEl.style.display = "flex";
-                        }
-                      }}
-                      className="w-max font-semibold ml-2 hidden items-center gap-2 text-gray-600 hover:underline"
-                    >
-                      Less <FaArrowUp />
-                    </button>
+                    Rs {packageData?.packageDiscountPrice?.toLocaleString("en-IN")}
                   </>
                 ) : (
-                  packageData?.packageDescription
+                  `Rs ${packageData?.packagePrice?.toLocaleString("en-IN")}`
                 )}
               </p>
+              {discountPercentage > 0 && (
+                <p className="text-sm font-bold text-red-600 dark:text-red-400 uppercase tracking-wide">
+                  {discountPercentage}% Discount
+                </p>
+              )}
+            </div>
+
+            {/* Destination & Quick Info */}
+            <div className="space-y-2 border-y border-slate-200 dark:border-slate-700 py-4">
+              <p className="text-slate-600 dark:text-slate-300 font-medium flex items-center gap-2">
+                <FaMapMarkerAlt size={14} className="text-teal-600" />
+                {packageData?.packageDestination}
+              </p>
+
+              {(+packageData?.packageDays > 0 || +packageData?.packageNights > 0) && (
+                <p className="text-slate-600 dark:text-slate-300 font-medium flex items-center gap-2">
+                  <FaClock size={14} className="text-blue-600" />
+                  {+packageData?.packageDays > 0 && `${packageData?.packageDays} ${+packageData?.packageDays > 1 ? "Days" : "Day"}`}
+                  {+packageData?.packageDays > 0 && +packageData?.packageNights > 0 && " • "}
+                  {+packageData?.packageNights > 0 && `${packageData?.packageNights} ${+packageData?.packageNights > 1 ? "Nights" : "Night"}`}
+                </p>
+              )}
+
+              {packageData?.packageTotalRatings > 0 && (
+                <div className="flex items-center gap-2 pt-2">
+                  <Rating
+                    value={packageData?.packageRating || 0}
+                    readOnly
+                    precision={0.1}
+                    size="small"
+                  />
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    ({packageData?.packageTotalRatings})
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
+            <div>
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-base">
+                {descExpanded
+                  ? packageData?.packageDescription
+                  : packageData?.packageDescription?.length > 150
+                  ? packageData?.packageDescription.substring(0, 150) + "..."
+                  : packageData?.packageDescription}
+              </p>
+              {packageData?.packageDescription?.length > 150 && (
+                <button
+                  onClick={() => setDescExpanded(!descExpanded)}
+                  className="mt-3 text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-semibold text-sm flex items-center gap-2"
+                >
+                  {descExpanded ? (
+                    <>
+                      Show Less <FaChevronUp size={12} />
+                    </>
+                  ) : (
+                    <>
+                      Show More <FaChevronDown size={12} />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Book Button */}
             {currentUser?.user_role !== 1 && (
-              <div className="w-full flex justify-center sm:justify-normal">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (currentUser) {
-                      navigate(`/booking/${params?.id}`);
-                    } else {
-                      navigate("/login");
-                    }
-                  }}
-                  className="w-full sm:w-[200px] bg-green-700 text-white rounded p-3 hover:opacity-95"
-                >
-                  Book Now
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentUser) {
+                    navigate(`/booking/${params?.id}`);
+                  } else {
+                    navigate("/login");
+                  }
+                }}
+                className="w-full bg-black dark:bg-slate-950 text-white font-bold py-4 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-800 transition-all text-base uppercase tracking-widest"
+              >
+                Book Now
+              </button>
             )}
 
-            {/* Accommodation */}
-            <div className="w-full flex flex-col mt-2">
-              <h4 className="text-xl">Accommodation</h4>
-              <p>{packageData?.packageAccommodation}</p>
+            {/* Verification Badges */}
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm">
+                <FaCheck size={14} className="text-green-600" />
+                Verified Package
+              </div>
+              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm">
+                <FaCheck size={14} className="text-green-600" />
+                1:1 Service Ratio
+              </div>
+              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm">
+                <FaCheck size={14} className="text-green-600" />
+                Priority Support
+              </div>
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Activities */}
-            <div className="w-full flex flex-col mt-2">
-              <h4 className="text-xl">Activities</h4>
-              <p>{packageData?.packageActivities}</p>
-            </div>
+      {/* Accordion Sections */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 border-t border-slate-200 dark:border-slate-700">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Accommodation */}
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+            <button
+              onClick={() => toggleSection("accommodation")}
+              className="w-full bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-6 py-4 flex items-center justify-between font-semibold text-slate-900 dark:text-white transition-colors"
+            >
+              <span className="flex items-center gap-3">
+                <FaHotel className="text-teal-600 text-lg" />
+                Accommodation
+              </span>
+              <FaChevronDown
+                size={16}
+                className={`transition-transform ${
+                  expandedSection === "accommodation" ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {expandedSection === "accommodation" && (
+              <div className="px-6 py-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm">
+                  {packageData?.packageAccommodation || "No accommodation details available"}
+                </p>
+              </div>
+            )}
+          </div>
 
-            {/* Meals */}
-            <div className="w-full flex flex-col mt-2">
-              <h4 className="text-xl">Meals</h4>
-              <p>{packageData?.packageMeals}</p>
-            </div>
+          {/* Activities */}
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+            <button
+              onClick={() => toggleSection("activities")}
+              className="w-full bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-6 py-4 flex items-center justify-between font-semibold text-slate-900 dark:text-white transition-colors"
+            >
+              <span className="flex items-center gap-3">
+                <FaRunning className="text-blue-600 text-lg" />
+                Activities
+              </span>
+              <FaChevronDown
+                size={16}
+                className={`transition-transform ${
+                  expandedSection === "activities" ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {expandedSection === "activities" && (
+              <div className="px-6 py-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm">
+                  {packageData?.packageActivities || "No activities listed"}
+                </p>
+              </div>
+            )}
+          </div>
 
-            <hr />
+          {/* Meals */}
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+            <button
+              onClick={() => toggleSection("meals")}
+              className="w-full bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-6 py-4 flex items-center justify-between font-semibold text-slate-900 dark:text-white transition-colors"
+            >
+              <span className="flex items-center gap-3">
+                <FaUtensils className="text-orange-600 text-lg" />
+                Meals
+              </span>
+              <FaChevronDown
+                size={16}
+                className={`transition-transform ${
+                  expandedSection === "meals" ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {expandedSection === "meals" && (
+              <div className="px-6 py-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm">
+                  {packageData?.packageMeals || "No meal information available"}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-            {/* Ratings & Reviews Section */}
-            <div className="w-full flex flex-col mt-2 items-center">
-              {packageRatings && (
-                <>
-                  <h4 className="text-xl">Ratings & Reviews</h4>
+      {/* Ratings & Reviews Section */}
+      <div className="bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-8">
+            Ratings & Reviews
+          </h2>
 
-                  {/* Rating Input Form */}
-                  <div
-                    className={`w-full sm:max-w-[640px] gap-2 ${
-                      !currentUser || ratingGiven || !hasBooked ? "hidden" : "flex flex-col items-center"
-                    }`}
-                  >
-                    <Rating
-                      name="simple-controlled"
-                      className="w-max"
-                      value={ratingsData?.rating}
-                      onChange={(e, newValue) => {
-                        setRatingsData({
-                          ...ratingsData,
-                          rating: newValue,
-                        });
-                      }}
-                    />
+          {packageRatings && (
+            <>
+              {/* Rating Input Form */}
+              {currentUser && !ratingGiven && hasBooked && (
+                <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-8 mb-8">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                    Share your experience
+                  </h3>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-slate-700 dark:text-slate-300 font-medium">Your Rating:</span>
+                      <Rating
+                        value={ratingsData?.rating}
+                        onChange={(e, newValue) => {
+                          setRatingsData({
+                            ...ratingsData,
+                            rating: newValue,
+                          });
+                        }}
+                      />
+                    </div>
                     <textarea
-                      className="w-full resize-none p-3 border border-black rounded"
-                      rows={3}
+                      className="w-full resize-none p-4 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-slate-900 dark:text-white"
+                      rows={4}
                       placeholder="Share your experience with this package..."
                       value={ratingsData?.review}
                       onChange={(e) => {
@@ -471,52 +568,68 @@ const Package = () => {
                         e.preventDefault();
                         giveRating();
                       }}
-                      className="w-full p-2 bg-green-700 text-white rounded disabled:opacity-80 hover:opacity-95"
+                      className="w-full bg-black dark:bg-slate-950 text-white font-bold py-3 rounded-lg disabled:opacity-50 hover:bg-slate-800 dark:hover:bg-slate-800 transition-all uppercase tracking-wide"
                     >
                       {loading ? "Submitting..." : "Submit Review"}
                     </button>
-                    <hr />
                   </div>
+                </div>
+              )}
 
-                  {/* Ratings Display Grid */}
-                  <div className="mt-3 w-full gap-2 grid 2xl:grid-cols-6 xl:grid-cols-5 xlplus:grid-cols-4 lg:grid-cols-3 md:grid-cols-2">
-                    <RatingCard packageRatings={packageRatings} />
-                    {packageData?.packageTotalRatings > 4 && (
-                      <button
-                        onClick={() =>
-                          navigate(`/package/ratings/${params?.id}`)
-                        }
-                        className="flex items-center justify-center text-lg gap-2 p-2 rounded border hover:bg-slate-500 hover:text-white"
-                      >
-                        View All <FaArrowRight />
-                      </button>
-                    )}
-                  </div>
-                </>
+              {/* Ratings Display Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <RatingCard packageRatings={packageRatings} />
+              </div>
+
+              {packageData?.packageTotalRatings > 4 && (
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => navigate(`/package/ratings/${params?.id}`)}
+                    className="flex items-center justify-center gap-2 px-8 py-3 border-2 border-slate-900 dark:border-white text-slate-900 dark:text-white rounded-lg font-bold hover:bg-slate-900 dark:hover:bg-white hover:text-white dark:hover:text-slate-900 transition-all uppercase tracking-wide"
+                  >
+                    View All <FaArrowRight size={16} />
+                  </button>
+                </div>
               )}
 
               {/* Login Prompt */}
               {!currentUser && (
-                <button
-                  onClick={() => {
-                    navigate("/login");
-                  }}
-                  className="p-2 rounded text-white bg-green-700"
-                >
-                  Log In to Rate Package
-                </button>
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-8 text-center">
+                  <p className="text-slate-900 dark:text-white font-semibold mb-4">
+                    Log in to rate this package
+                  </p>
+                  <button
+                    onClick={() => {
+                      navigate("/login");
+                    }}
+                    className="bg-black dark:bg-slate-950 text-white font-bold px-8 py-3 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-800 transition-all"
+                  >
+                    Log In
+                  </button>
+                </div>
               )}
 
               {/* Booking Required Message */}
               {currentUser && !hasBooked && !ratingGiven && (
-                <p className="text-sm text-gray-600 mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                  You need to book this package before you can rate it.
-                </p>
+                <div className="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg p-6 text-center">
+                  <p className="text-yellow-900 dark:text-yellow-100 font-medium">
+                    You need to book this package before you can rate it.
+                  </p>
+                </div>
               )}
-            </div>
-          </div>
+
+              {/* Already Rated Message */}
+              {currentUser && ratingGiven && (
+                <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-6 text-center">
+                  <p className="text-green-900 dark:text-green-100 font-semibold">
+                    ✓ Thank you for rating this package!
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
