@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
 import { 
   FaClock, FaMapMarkerAlt, FaUsers, FaCalendarAlt, 
   FaChevronDown, FaChevronUp, FaShieldAlt, FaStar, 
-  FaPhone, FaBriefcase, FaTimes, FaUserTie, FaCheckCircle,
-  FaArrowLeft // Added for Back Button
+  FaTimes, FaUserTie, FaCheckCircle, FaArrowLeft, FaBriefcase,
+  FaInfoCircle
 } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router";
@@ -17,331 +17,270 @@ const Booking = () => {
   const params = useParams();
   const navigate = useNavigate();
 
-  const [packageData, setPackageData] = useState({});
-  const [bookingData, setBookingData] = useState({
-    totalPrice: 0,
-    packageDetails: null,
-    buyer: null,
+  const [packageData, setPackageData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Date logic: Restrict past dates
+  const today = new Date().toISOString().split("T")[0];
+
+  const [booking, setBooking] = useState({
     persons: 1,
     date: "",
     selectedGuide: null,
-    guidePrice: 0,
     useStaffGuide: true,
   });
 
-  const [loading, setLoading] = useState(false);
-  const [currentDate, setCurrentDate] = useState("");
   const [openSection, setOpenSection] = useState(0);
-  
   const [guides, setGuides] = useState([]);
-  const [guideLoading, setGuideLoading] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  const getPackageData = async () => {
+  // COMPUTED VALUES
+  const pricePerPerson = useMemo(() => 
+    packageData?.packageDiscountPrice || packageData?.packagePrice || 0
+  , [packageData]);
+
+  const guidePrice = useMemo(() => {
+    if (booking.useStaffGuide || !packageData) return 0;
+    return 5000 * (packageData.packageDays || 1);
+  }, [booking.useStaffGuide, packageData]);
+
+  const totalPrice = useMemo(() => 
+    (pricePerPerson * booking.persons) + guidePrice
+  , [pricePerPerson, booking.persons, guidePrice]);
+
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/package/get-package-data/${params?.packageId}`);
-      const data = await res.json();
-      if (data?.success) {
-        setPackageData(data.packageData);
-      } else {
-        toast.error(data?.message);
+      const [pkgRes, guideRes] = await Promise.all([
+        fetch(`/api/package/get-package-data/${params?.packageId}`),
+        fetch("/api/guide-application/get-approved-guides?limit=10")
+      ]);
+
+      const pkgData = await pkgRes.json();
+      const gData = await guideRes.json();
+
+      if (pkgData?.success) setPackageData(pkgData.packageData);
+      if (gData?.success) {
+        setGuides((gData.guides || []).filter(g => g.email !== currentUser?.email));
       }
     } catch (err) {
-      console.error(err);
+      toast.error("Connectivity issue. Please refresh.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [params?.packageId, currentUser?.email]);
 
-  const getFeaturedGuides = async () => {
-    try {
-      setGuideLoading(true);
-      const res = await fetch("/api/guide-application/get-approved-guides?limit=10");
-      const data = await res.json();
-      if (data.success) {
-        const filteredGuides = (data.guides || []).filter(
-          (guide) => guide && guide.email && guide.email !== currentUser?.email
-        );
-        setGuides(filteredGuides);
-      }
-    } catch (error) {
-      console.error("Error fetching guides:", error);
-    } finally {
-      setGuideLoading(false);
-    }
-  };
-
-  const handleSelectGuide = (guide) => {
-    const guidePrice = 5000 * (packageData.packageDays || 1);
-    setBookingData((prev) => ({
-      ...prev,
-      selectedGuide: guide,
-      guidePrice: guidePrice,
-      useStaffGuide: false,
-      totalPrice: (pricePerPerson * prev.persons) + guidePrice,
-    }));
-    setShowGuideModal(false);
-    toast.success(`Professional Guide ${guide.fullName} added!`);
-  };
-
-  const handleUseStaff = () => {
-    setBookingData((prev) => ({
-      ...prev,
-      selectedGuide: null,
-      guidePrice: 0,
-      useStaffGuide: true,
-      totalPrice: pricePerPerson * prev.persons,
-    }));
-    toast.success("Using Local Staff/Guide services");
-  };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleBookPackage = () => {
-    if (!bookingData.date) {
-      toast.error("Please select a travel date");
-      return;
-    }
+    if (!booking.date) return toast.error("Please select a travel date");
+    if (booking.date < today) return toast.error("Travel date cannot be in the past");
+    
     navigate("/stripe-checkout", {
       state: {
         bookingDetails: { 
-          ...bookingData, 
-          packageName: packageData.packageName, 
+          ...booking,
+          totalPrice,
           packageId: params?.packageId,
-          guideType: bookingData.useStaffGuide ? "Staff Guide" : "Private Guide",
+          packageName: packageData.packageName,
+          guideType: booking.useStaffGuide ? "Staff" : "Private Professional",
+          guidePrice: guidePrice
         },
         packageData,
       },
     });
   };
 
-  useEffect(() => {
-    if (params?.packageId) getPackageData();
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    setCurrentDate(tomorrow.toISOString().split("T")[0]);
-  }, [params?.packageId]);
-
-  useEffect(() => {
-    if (packageData) {
-      const price = packageData.packageDiscountPrice || packageData.packagePrice || 0;
-      setBookingData((prev) => ({
-        ...prev,
-        packageDetails: params.packageId,
-        buyer: currentUser?._id,
-        totalPrice: (price * prev.persons) + (prev.guidePrice || 0),
-      }));
-    }
-    getFeaturedGuides();
-  }, [packageData, currentUser]);
-
-  const pricePerPerson = packageData.packageDiscountPrice || packageData.packagePrice || 0;
-  const sections = [
-    { title: "Accommodation", content: packageData.packageAccommodation },
-    { title: "Meals", content: packageData.packageMeals },
-    { title: "Activities", content: packageData.packageActivities },
-  ];
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <div className="w-10 h-10 border-2 border-slate-100 border-t-black rounded-full animate-spin mb-4" />
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Loading Experience</p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 pb-20">
-      <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
+    <div className="min-h-screen bg-[#FAFAFA] text-slate-900 pb-20 selection:bg-black selection:text-white">
+      <div className="max-w-7xl mx-auto px-6 py-10">
         
-        {/* BACK BUTTON & HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-            <button 
-              onClick={() => navigate(-1)} 
-              className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-slate-500 hover:text-black transition-colors w-fit"
-            >
-              <FaArrowLeft size={12} />
-              Back
-            </button>
-
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-teal-600">
-              <FaStar className="text-[10px]" />
-              <span>Premium Travel Experience</span>
-            </div>
+        {/* NAV & STATUS */}
+        <div className="flex justify-between items-center mb-12">
+          <button onClick={() => navigate(-1)} className="group flex items-center gap-4 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-black transition-all">
+            <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" /> Return
+          </button>
+          <div className="hidden md:flex items-center gap-3 px-5 py-2.5 bg-white border border-slate-100 rounded-full shadow-sm text-[10px] font-black uppercase tracking-widest">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            Direct Booking Available
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          {/* LEFT COLUMN */}
-          <div className="lg:col-span-8 space-y-8">
-            <div className="relative h-[400px] md:h-[500px] w-full rounded-3xl overflow-hidden shadow-2xl group">
-              <img
-                src={packageData.packageImages?.[0] || DEFAULT_IMAGE}
-                alt={packageData.packageName}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                onError={(e) => (e.target.src = DEFAULT_IMAGE)}
-              />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          
+          {/* LEFT: GALLERY & INFO */}
+          <div className="lg:col-span-7 space-y-12">
+            <div className="relative aspect-video lg:aspect-[16/10] rounded-[3.5rem] overflow-hidden shadow-2xl group">
+              <img src={packageData.packageImages?.[0] || DEFAULT_IMAGE} className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-1000" alt="Destination" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-              <div className="absolute bottom-8 left-8 right-8 text-white">
-                <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight">{packageData.packageName}</h1>
-                <div className="flex flex-wrap items-center gap-4">
-                  <span className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
-                    <FaMapMarkerAlt className="text-teal-400" /> {packageData.packageDestination}
-                  </span>
-                  <span className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
-                    <FaClock className="text-teal-400" /> {packageData.packageDays}D / {packageData.packageNights}N
-                  </span>
+              <div className="absolute bottom-12 left-12 right-12">
+                <div className="flex items-center gap-2 mb-4">
+                    {[1, 2, 3, 4, 5].map(s => <FaStar key={s} className="text-yellow-400 text-[10px]" />)}
+                    <span className="text-[10px] text-white/60 font-black uppercase tracking-widest ml-2">Verified Destination</span>
                 </div>
+                <h1 className="text-5xl md:text-7xl font-black text-white leading-none tracking-tighter uppercase">{packageData.packageName}</h1>
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-              <h2 className="text-2xl font-bold mb-4">The Experience</h2>
-              <p className="text-slate-600 leading-relaxed text-lg">{packageData.packageDescription}</p>
-            </div>
-
+            {/* DETAILS ACCORDION */}
             <div className="space-y-4">
-              {sections.map((sec, i) => (
-                <div key={i} className={`bg-white rounded-2xl border transition-all ${openSection === i ? 'border-teal-500 shadow-md' : 'border-slate-100'}`}>
-                  <button onClick={() => setOpenSection(openSection === i ? null : i)} className="w-full flex items-center justify-between p-6">
-                    <span className="text-lg font-bold">{sec.title}</span>
-                    <div className={`p-2 rounded-full ${openSection === i ? 'bg-teal-500 text-white' : 'bg-slate-50 text-slate-400'}`}>
-                      {openSection === i ? <FaChevronUp /> : <FaChevronDown />}
+              {[
+                { title: "Accommodation", icon: <FaShieldAlt />, content: packageData.packageAccommodation },
+                { title: "Dining & Meals", icon: <FaStar />, content: packageData.packageMeals },
+                { title: "Planned Activities", icon: <FaBriefcase />, content: packageData.packageActivities }
+              ].map((sec, i) => (
+                <div key={i} className={`bg-white rounded-[2rem] border transition-all duration-500 ${openSection === i ? 'border-black shadow-xl ring-4 ring-slate-50' : 'border-slate-100 hover:border-slate-200'}`}>
+                  <button onClick={() => setOpenSection(openSection === i ? null : i)} className="w-full p-8 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <span className={`text-lg ${openSection === i ? 'text-black' : 'text-slate-300'}`}>{sec.icon}</span>
+                        <span className="font-black uppercase tracking-[0.15em] text-[11px]">{sec.title}</span>
+                    </div>
+                    <div className={`p-2 rounded-xl transition-all ${openSection === i ? 'rotate-180 bg-black text-white' : 'bg-slate-50 text-slate-400'}`}>
+                      <FaChevronDown />
                     </div>
                   </button>
-                  {openSection === i && <div className="px-6 pb-6 text-slate-600 border-t border-slate-50 pt-4">{sec.content}</div>}
+                  <AnimatePresence>
+                    {openSection === i && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="px-8 pb-8 text-slate-500 text-sm leading-relaxed border-t border-slate-50 pt-6">
+                        {sec.content || "Experience details will be shared in your digital itinerary."}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* RIGHT COLUMN (Sidebar) */}
-          <div className="lg:col-span-4">
-            <div className="sticky top-8 bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100">
-              <div className="flex justify-between items-end mb-8">
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Price</p>
-                  <h2 className="text-3xl font-black text-slate-900">Rs {bookingData.totalPrice}</h2>
+          {/* RIGHT: PREMIUM BOOKING CARD */}
+          <div className="lg:col-span-5">
+            <div className="sticky top-10 bg-white rounded-[3.5rem] p-10 lg:p-14 shadow-2xl shadow-slate-200/50 border border-slate-50">
+              
+              <div className="mb-12">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4">Total Investment</p>
+                <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-black tracking-tighter">Rs {totalPrice.toLocaleString()}</span>
+                    <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">NPR</span>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold text-teal-600">Per Person</p>
-                  <p className="text-lg font-bold">Rs {pricePerPerson}</p>
-                </div>
+                <p className="mt-4 text-[11px] font-bold text-teal-600 bg-teal-50 inline-block px-3 py-1 rounded-md">
+                    Value: Rs {pricePerPerson.toLocaleString()} / Guest
+                </p>
               </div>
 
-              <div className="space-y-6">
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
-                    <FaCalendarAlt className="text-teal-500" /> Travel Date
-                  </label>
-                  <input
-                    type="date"
-                    min={currentDate}
-                    className="w-full bg-slate-50 border-2 border-transparent focus:border-teal-500 focus:bg-white rounded-xl p-4 transition-all outline-none font-medium"
-                    onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-3">
-                    <FaUserTie className="text-teal-500" /> Guiding Service
-                  </label>
-                  
-                  <div className="space-y-3">
-                    <button 
-                      onClick={handleUseStaff}
-                      className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center justify-between ${bookingData.useStaffGuide ? 'border-teal-500 bg-teal-50/50' : 'border-slate-100 hover:border-slate-200'}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${bookingData.useStaffGuide ? 'bg-teal-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                          <FaCheckCircle />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-sm font-bold text-slate-800">Local Staff Guide</p>
-                          <p className="text-xs text-slate-500">Included in package</p>
-                        </div>
-                      </div>
-                    </button>
-
-                    {bookingData.selectedGuide ? (
-                      <div className="p-4 rounded-2xl border-2 border-teal-500 bg-teal-50/50 flex items-center justify-between">
-                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold">
-                                {bookingData.selectedGuide.fullName.charAt(0)}
-                            </div>
-                            <div className="text-left">
-                                <p className="text-sm font-bold text-slate-800">{bookingData.selectedGuide.fullName}</p>
-                                <p className="text-xs text-teal-600 font-bold">+ Rs {bookingData.guidePrice} (Professional)</p>
-                            </div>
-                         </div>
-                         <button onClick={() => setShowGuideModal(true)} className="text-xs font-bold text-teal-600 underline">Change</button>
-                      </div>
-                    ) : (
-                      <button 
-                        onClick={() => setShowGuideModal(true)}
-                        className={`w-full p-4 rounded-2xl border-2 border-dashed transition-all flex items-center justify-between ${!bookingData.useStaffGuide ? 'border-teal-500 bg-teal-50/50' : 'border-slate-200 hover:border-teal-200'}`}
-                      >
-                        <div className="flex items-center gap-3 text-slate-500">
-                          <FaBriefcase />
-                          <p className="text-sm font-bold">Private Expert Guide</p>
-                        </div>
-                        <span className="text-xs font-bold bg-slate-100 px-2 py-1 rounded text-slate-600">+Rs 5k/day</span>
-                      </button>
-                    )}
+              <div className="space-y-10">
+                {/* DATE SELECTOR - PAST DATES BLOCKED */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Departure Date</label>
+                    {!booking.date && <span className="text-[9px] text-red-500 font-bold uppercase animate-pulse">Required</span>}
+                  </div>
+                  <div className="relative group">
+                    <FaCalendarAlt className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-black transition-colors" />
+                    <input 
+                      type="date" 
+                      min={today} // BLOCK PAST DATES
+                      className="w-full bg-slate-50 border-none rounded-2xl py-5 pl-14 pr-6 text-sm font-bold focus:ring-2 focus:ring-black outline-none transition-all cursor-pointer"
+                      onChange={(e) => setBooking({...booking, date: e.target.value})}
+                    />
                   </div>
                 </div>
 
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
-                    <FaUsers className="text-teal-500" /> Guest Count
-                  </label>
-                  <div className="flex items-center justify-between bg-slate-50 rounded-xl p-2 border border-slate-100">
-                    <button onClick={() => {
-                        const p = Math.max(1, bookingData.persons - 1);
-                        setBookingData({...bookingData, persons: p, totalPrice: (p * pricePerPerson) + bookingData.guidePrice});
-                    }} className="w-10 h-10 bg-white rounded-lg shadow-sm font-bold">-</button>
-                    <span className="font-black text-lg">{bookingData.persons}</span>
-                    <button onClick={() => {
-                        const p = Math.min(10, bookingData.persons + 1);
-                        setBookingData({...bookingData, persons: p, totalPrice: (p * pricePerPerson) + bookingData.guidePrice});
-                    }} className="w-10 h-10 bg-white rounded-lg shadow-sm font-bold">+</button>
+                {/* GUEST SELECTOR */}
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Number of Guests</label>
+                  <div className="flex items-center justify-between bg-slate-50 rounded-2xl p-2 border border-slate-100">
+                    <button onClick={() => setBooking(prev => ({ ...prev, persons: Math.max(1, prev.persons - 1) }))} className="w-14 h-14 bg-white rounded-xl shadow-sm text-xl font-black hover:bg-black hover:text-white transition-all active:scale-90">-</button>
+                    <div className="flex flex-col items-center">
+                        <span className="text-2xl font-black">{booking.persons}</span>
+                        <span className="text-[8px] font-bold uppercase text-slate-400 tracking-tighter">Guests</span>
+                    </div>
+                    <button onClick={() => setBooking(prev => ({ ...prev, persons: Math.min(10, prev.persons + 1) }))} className="w-14 h-14 bg-white rounded-xl shadow-sm text-xl font-black hover:bg-black hover:text-white transition-all active:scale-90">+</button>
                   </div>
+                </div>
+
+                {/* GUIDING SERVICE */}
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Service Preference</label>
+                    <div className="grid gap-4">
+                        <button 
+                            onClick={() => setBooking({...booking, useStaffGuide: true, selectedGuide: null})}
+                            className={`p-6 rounded-3xl border-2 transition-all flex items-center justify-between ${booking.useStaffGuide ? 'border-black bg-slate-50' : 'border-slate-100'}`}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`p-3 rounded-2xl ${booking.useStaffGuide ? 'bg-black text-white' : 'bg-white text-slate-200'}`}><FaCheckCircle /></div>
+                                <div className="text-left font-black uppercase text-[10px] tracking-widest">Local Expert Staff</div>
+                            </div>
+                            <span className="text-[9px] font-bold text-slate-400">Included</span>
+                        </button>
+
+                        <button 
+                            onClick={() => setShowGuideModal(true)}
+                            className={`p-6 rounded-3xl border-2 border-dashed transition-all flex items-center justify-between ${booking.selectedGuide ? 'border-teal-500 bg-teal-50/20' : 'border-slate-200 hover:border-black'}`}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`p-3 rounded-2xl ${booking.selectedGuide ? 'bg-teal-500 text-white' : 'bg-white text-slate-200 shadow-sm'}`}><FaUserTie /></div>
+                                <div className="text-left">
+                                    <p className="font-black uppercase text-[10px] tracking-widest">{booking.selectedGuide?.fullName || "Private Professional"}</p>
+                                    <p className="text-[9px] font-bold text-teal-600 mt-1 uppercase tracking-tighter">{booking.selectedGuide ? "Active" : "+ Rs 5,000 / Day"}</p>
+                                </div>
+                            </div>
+                            <span className="text-[9px] font-black underline uppercase">Modify</span>
+                        </button>
+                    </div>
                 </div>
               </div>
 
-              <div className="my-8 h-px bg-slate-100" />
-
+              {/* ACTION BUTTON */}
               <button 
                 onClick={handleBookPackage}
-                disabled={!bookingData.date || loading}
-                className="w-full bg-slate-900 text-white rounded-2xl py-5 font-bold text-lg hover:bg-teal-600 hover:shadow-lg transition-all disabled:opacity-30 active:scale-95"
+                disabled={!booking.date}
+                className="w-full mt-14 bg-black text-white rounded-[2rem] py-6 text-[11px] font-black uppercase tracking-[0.3em] hover:bg-slate-800 hover:shadow-2xl transition-all disabled:opacity-20 disabled:cursor-not-allowed active:scale-[0.97]"
               >
-                {loading ? "Processing..." : "Confirm Booking"}
+                Secure This Package
               </button>
 
-              <div className="mt-6 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 uppercase">
+              <div className="mt-8 flex items-center justify-center gap-3 text-[9px] font-black text-slate-300 uppercase tracking-widest">
                 <FaShieldAlt className="text-teal-500" />
-                Secure Checkout & Instant Confirmation
+                Guaranteed Secure Booking
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* MODAL */}
+      {/* MODAL: SELECT GUIDE */}
       <AnimatePresence>
         {showGuideModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowGuideModal(false)}>
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-[2rem] max-w-xl w-full max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
-              <div className="p-8 border-b flex justify-between items-center">
-                <h2 className="text-2xl font-bold">Select Expert Guide</h2>
-                <button onClick={() => setShowGuideModal(false)} className="text-slate-400 hover:text-slate-900"><FaTimes size={24} /></button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-6" onClick={() => setShowGuideModal(false)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-white rounded-[4rem] max-w-lg w-full overflow-hidden shadow-2xl">
+              <div className="p-12 border-b border-slate-50 flex justify-between items-center">
+                <h3 className="text-2xl font-black uppercase tracking-tighter">Private Experts</h3>
+                <button onClick={() => setShowGuideModal(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-black hover:text-white transition-all"><FaTimes /></button>
               </div>
-              <div className="p-6 overflow-y-auto flex-1 bg-slate-50 space-y-4">
-                {guides.map((guide) => (
-                  <div key={guide._id} onClick={() => handleSelectGuide(guide)} className="bg-white p-5 rounded-2xl border-2 border-transparent hover:border-teal-500 cursor-pointer transition-all flex items-center gap-4 shadow-sm">
-                    <div className="w-14 h-14 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center font-black text-xl">{guide.fullName.charAt(0)}</div>
+              <div className="p-10 max-h-[40vh] overflow-y-auto space-y-6">
+                {guides.map(guide => (
+                  <div key={guide._id} onClick={() => { setBooking({...booking, selectedGuide: guide, useStaffGuide: false}); setShowGuideModal(false); toast.success(`Guide Assigned: ${guide.fullName}`); }} className="group p-6 rounded-[2.5rem] bg-slate-50 hover:bg-black transition-all cursor-pointer flex items-center gap-6">
+                    <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center font-black text-xl group-hover:bg-white/10 group-hover:text-white transition-all shadow-sm">{guide.fullName.charAt(0)}</div>
                     <div className="flex-1">
-                      <h4 className="font-bold">{guide.fullName}</h4>
-                      <p className="text-slate-500 text-sm">{guide.experience} years • Rs 5000/day</p>
+                      <h4 className="font-black text-xs uppercase tracking-widest group-hover:text-white transition-all">{guide.fullName}</h4>
+                      <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tighter group-hover:text-white/60 transition-all">{guide.experience} Year Professional</p>
                     </div>
-                    <div className="text-teal-600 font-bold text-sm">Select</div>
+                    <div className="text-[8px] font-black uppercase bg-white px-4 py-2 rounded-full border border-slate-100 group-hover:border-white/20">Assign</div>
                   </div>
                 ))}
               </div>
-              <div className="p-6 border-t bg-white">
-                <button onClick={handleUseStaff} className="w-full py-4 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-all">
-                  Skip & Use Local Staff Guide
+              <div className="p-10 bg-slate-50">
+                <p className="text-[10px] text-center font-bold text-slate-400 uppercase tracking-widest mb-6 px-10">Private guides are subject to availability and verified status.</p>
+                <button onClick={() => { setBooking({...booking, useStaffGuide: true, selectedGuide: null}); setShowGuideModal(false); }} className="w-full py-5 bg-white border border-slate-200 rounded-3xl text-[10px] font-black uppercase tracking-widest hover:border-black transition-all">
+                  Use Local Staff Instead
                 </button>
               </div>
             </motion.div>
