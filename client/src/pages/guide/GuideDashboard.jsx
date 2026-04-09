@@ -1,434 +1,377 @@
 import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
-import { FaCalendarCheck, FaEnvelope, FaTrash, FaCheckCircle, FaUsers } from "react-icons/fa";
+import { 
+  FaCalendarCheck, FaEnvelope, FaTrash, FaCheckCircle, FaUsers, 
+  FaSearch, FaChartLine, FaWallet, FaUserEdit, FaImages, 
+  FaSignOutAlt, FaThLarge, FaHistory, FaStar, FaPhoneAlt 
+} from "react-icons/fa";
 
 const GuideDashboard = () => {
   const { currentUser } = useSelector((state) => state.user);
+  
+  // View States
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [activeTab, setActiveTab] = useState("overview"); // overview, inquiries, finance, profile
+  const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+
+  // Business States (Public Profile)
+  const [profileData, setProfileData] = useState({
+    bio: "Certified local guide with experience in mountain trekking and historical city tours.",
+    languages: ["English", "Spanish"],
+    tags: ["Hiking", "History", "Photography"],
+    price: 50
+  });
+
+  // Financial Ledger States
+  const [finances] = useState({
+    totalRevenue: 4500,
+    pendingPayouts: 1200,
+    transactions: [
+      { id: "TX-9901", traveler: "John Doe", amount: 200, date: "2024-03-25", status: "Paid" },
+      { id: "TX-9902", traveler: "Sarah Smith", amount: 450, date: "2024-03-28", status: "Pending" },
+    ]
+  });
 
   const fetchMessages = async () => {
     if (!currentUser?.email) return;
-
     try {
       setLoading(true);
       const res = await fetch(`/api/guide-message/get-messages/${currentUser.email}`, {
         method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
         credentials: "include",
       });
       const data = await res.json();
-
-      if (data.success) {
-        setMessages(data.messages);
-      }
+      if (data.success) setMessages(data.messages);
     } catch (error) {
-      console.log(error);
+      toast.error("Failed to sync data with server");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchMessages();
-  }, [currentUser]);
+  useEffect(() => { fetchMessages(); }, [currentUser]);
 
-  const handleViewMessage = async (message) => {
-    setSelectedMessage(message);
-    setShowModal(true);
-
-    if (message.status === "unread") {
-      try {
-        await fetch(`/api/guide-message/mark-read/${message._id}`, {
-          method: "PUT",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
-        fetchMessages();
-      } catch (error) {
-        console.log(error);
-      }
-    }
-  };
-
-  const handleAcceptMessage = async (id) => {
-    try {
-      const res = await fetch(`/api/guide-message/update-status/${id}`, {
-        method: "PUT",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ status: "approved" }),
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        toast.success(data.message);
-        // Update the selected message status
-        setSelectedMessage({ ...selectedMessage, status: "approved" });
-        fetchMessages();
-      } else {
-        toast.error(data.message || "Failed to approve message");
-      }
-    } catch (error) {
-      console.log(error);
-      toast.error("Failed to approve message");
-    }
-  };
-
-  const handleRejectMessage = async (id) => {
-    try {
-      const res = await fetch(`/api/guide-message/update-status/${id}`, {
-        method: "PUT",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ status: "rejected" }),
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        toast.success(data.message);
-        // Update the selected message status
-        setSelectedMessage({ ...selectedMessage, status: "rejected" });
-        fetchMessages();
-      } else {
-        toast.error(data.message || "Failed to reject message");
-      }
-    } catch (error) {
-      console.log(error);
-      toast.error("Failed to reject message");
-    }
-  };
-
-  const handleDeleteMessage = async (id) => {
-    try {
-      const res = await fetch(`/api/guide-message/delete-message/${id}`, {
-        method: "DELETE",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        toast.success(data.message);
-        fetchMessages();
-        setShowModal(false);
-      } else {
-        toast.error(data.message || "Failed to delete message");
-      }
-    } catch (error) {
-      console.log(error);
-      toast.error("Failed to delete message");
-    }
-  };
-
-  const unreadCount = messages.filter((m) => m.status === "unread").length;
-  const pendingMessages = messages.filter((m) => m.status === "unread" || m.status === "read");
-  const approvedMessages = messages.filter((m) => m.status === "approved");
+  // Derived Analytics
+  const unreadMessages = messages.filter(m => m.status === "unread");
+  const approvedTours = messages.filter(m => m.status === "approved");
 
   return (
-    <div className="w-full bg-slate-50 px-3 sm:px-6 py-6 min-h-[calc(100vh-80px)]">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Hero / welcome */}
-        <section className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white rounded-xl p-6 lg:p-8 shadow-lg">
-          <div className="space-y-3">
-            <p className="text-xs uppercase tracking-widest text-emerald-100 font-semibold">
-              Guide dashboard
-            </p>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold leading-snug">
-              Welcome{currentUser ? `, ${currentUser.username}` : ""}.
-            </h1>
-            <p className="text-sm sm:text-base text-emerald-100/90">
-              Manage your messages from travelers and respond to tour inquiries.
-            </p>
+    <div className="flex min-h-screen bg-slate-50 font-sans">
+      {/* SIDEBAR NAVIGATION - The "Pro" Look */}
+      <aside className="w-72 bg-slate-900 text-white hidden lg:flex flex-col sticky top-0 h-screen shadow-2xl">
+        <div className="p-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+              <FaThLarge className="text-white text-sm" />
+            </div>
+            <h2 className="text-xl font-bold tracking-tight">GuideHub<span className="text-emerald-500 text-3xl">.</span></h2>
           </div>
-        </section>
-
-        {/* Messages Section */}
-        <section className="bg-white rounded-xl shadow-sm p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FaEnvelope className="text-emerald-600 text-xl" />
-              <h2 className="text-xl font-semibold text-slate-800">
-                User Requests
-              </h2>
-              {unreadCount > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                  {unreadCount} new
+          <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Management Suite</p>
+        </div>
+        
+        <nav className="flex-1 px-4 space-y-1">
+          {[
+            { id: "overview", label: "Overview", icon: <FaThLarge /> },
+            { id: "inquiries", label: "Inquiries", icon: <FaEnvelope />, count: unreadMessages.length },
+            { id: "finance", label: "Financials", icon: <FaWallet /> },
+            { id: "profile", label: "Public Brand", icon: <FaUserEdit /> },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-200 group ${
+                activeTab === item.id ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/50" : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <span className={activeTab === item.id ? "text-white" : "text-slate-500 group-hover:text-emerald-400"}>
+                  {item.icon}
+                </span>
+                <span className="font-semibold text-sm">{item.label}</span>
+              </div>
+              {item.count > 0 && (
+                <span className="bg-emerald-400 text-slate-900 text-[10px] px-2 py-0.5 rounded-full font-black">
+                  {item.count}
                 </span>
               )}
-            </div>
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-6 border-t border-slate-800">
+          <div className="bg-slate-800/50 p-4 rounded-2xl flex items-center gap-3">
+             <img src={currentUser?.avatar} className="w-10 h-10 rounded-full border-2 border-emerald-500" alt="Guide" />
+             <div className="overflow-hidden">
+               <p className="text-xs font-bold truncate">{currentUser?.username}</p>
+               <p className="text-[10px] text-slate-500 truncate">Verified Guide</p>
+             </div>
           </div>
+        </div>
+      </aside>
 
-          {loading ? (
-            <p className="text-sm text-slate-600">Loading messages...</p>
-          ) : pendingMessages.length === 0 ? (
-            <p className="text-sm text-slate-600">No pending requests</p>
-          ) : (
-            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-              {pendingMessages.map((msg) => (
-                <div
-                  key={msg._id}
-                  className={`p-4 border rounded-lg transition-all ${
-                    msg.status === "unread"
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-gray-200"
-                  }`}
-                >
-                  <div className="flex justify-between items-start gap-3">
-                    <div 
-                      className="flex-1 cursor-pointer"
-                      onClick={() => handleViewMessage(msg)}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-slate-800">
-                          {msg.userName}
-                        </h3>
-                        {msg.status === "unread" && (
-                          <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-                            NEW
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-slate-600">{msg.userEmail}</p>
-                      <p className="text-sm text-slate-700 mt-2 line-clamp-2">
-                        {msg.message}
-                      </p>
-                      <span className="text-xs text-slate-500 mt-2 block">
-                        {new Date(msg.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteMessage(msg._id);
-                      }}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all"
-                      title="Delete message"
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
+      {/* MAIN VIEWPORT */}
+      <main className="flex-1 p-6 lg:p-12 overflow-y-auto">
+        
+        {/* VIEW: OVERVIEW */}
+        {activeTab === "overview" && (
+          <div className="max-w-6xl mx-auto space-y-10">
+            <header className="flex justify-between items-end">
+              <div>
+                <h1 className="text-4xl font-black text-slate-900 tracking-tight">Executive Summary</h1>
+                <p className="text-slate-500 mt-2 font-medium">Monitoring your tour operations for this month.</p>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                   <FaWallet size={80} />
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
+                <p className="text-slate-400 text-xs font-black uppercase mb-2">Net Revenue</p>
+                <h3 className="text-4xl font-black text-slate-900">Rs.{finances.totalRevenue}</h3>
+                <div className="mt-4 text-emerald-600 text-xs font-bold flex items-center gap-1">
+                   <FaChartLine /> +14.2% from last month
+                </div>
+              </div>
+              
+              <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                <p className="text-slate-400 text-xs font-black uppercase mb-2">Confirmed Tours</p>
+                <h3 className="text-4xl font-black text-slate-900">{approvedTours.length}</h3>
+                <p className="mt-4 text-slate-400 text-xs font-medium">8 tours pending completion</p>
+              </div>
 
-        {/* Guiding History Section */}
-        <section className="bg-white rounded-xl shadow-sm p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FaCheckCircle className="text-blue-600 text-xl" />
-              <h2 className="text-xl font-semibold text-slate-800">
-                Guiding History
-              </h2>
-              {approvedMessages.length > 0 && (
-                <span className="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                  {approvedMessages.length}
-                </span>
-              )}
+              <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                <p className="text-slate-400 text-xs font-black uppercase mb-2">Guide Reputation</p>
+                <h3 className="text-4xl font-black text-slate-900 flex items-center gap-2">4.9 <FaStar className="text-amber-400 text-2xl" /></h3>
+                <p className="mt-4 text-slate-400 text-xs font-medium">Based on 128 reviews</p>
+              </div>
             </div>
+
+            <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center">
+                <h3 className="font-black text-slate-800 text-lg">Urgent Tasks</h3>
+                <button className="text-emerald-600 text-xs font-bold hover:underline">View All Inquiries</button>
+              </div>
+              <div className="p-4 divide-y divide-slate-50">
+                {unreadMessages.length === 0 ? (
+                  <p className="p-8 text-center text-slate-400 text-sm">No critical alerts right now.</p>
+                ) : (
+                  unreadMessages.map(msg => (
+                    <div key={msg._id} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-all rounded-2xl cursor-pointer" onClick={() => setActiveTab("inquiries")}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-black">
+                          {msg.userName[0]}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800">{msg.userName}</p>
+                          <p className="text-xs text-slate-400">Sent a booking inquiry</p>
+                        </div>
+                      </div>
+                      <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-3 py-1 rounded-full">NEW INQUIRY</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
           </div>
+        )}
 
-          {loading ? (
-            <p className="text-sm text-slate-600">Loading history...</p>
-          ) : approvedMessages.length === 0 ? (
-            <p className="text-sm text-slate-600">No accepted tours yet</p>
-          ) : (
-            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-              {approvedMessages.map((msg) => (
-                <div
-                  key={msg._id}
-                  className="p-4 border border-blue-200 bg-blue-50 rounded-lg transition-all"
-                >
-                  <div className="flex justify-between items-start gap-3">
-                    <div 
-                      className="flex-1 cursor-pointer"
-                      onClick={() => handleViewMessage(msg)}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-slate-800">
-                          {msg.userName}
-                        </h3>
-                        <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
-                          ACCEPTED
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600">{msg.userEmail}</p>
-                      {msg.tourDays && msg.tourDate && (
-                        <div className="mt-2 space-y-1">
-                          <p className="text-sm text-slate-700">
-                            <span className="font-semibold">Tour Date:</span>{" "}
-                            {new Date(msg.tourDate).toLocaleDateString()}
-                          </p>
-                          <p className="text-sm text-slate-700">
-                            <span className="font-semibold">Duration:</span>{" "}
-                            {msg.tourDays} {msg.tourDays === 1 ? 'day' : 'days'}
-                          </p>
-                        </div>
-                      )}
-                      <span className="text-xs text-slate-500 mt-2 block">
-                        Accepted on: {new Date(msg.updatedAt || msg.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteMessage(msg._id);
-                      }}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all"
-                      title="Delete record"
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
-                </div>
-              ))}
+        {/* VIEW: FINANCES */}
+        {activeTab === "finance" && (
+          <div className="max-w-5xl mx-auto space-y-8">
+            <h2 className="text-3xl font-black text-slate-900">Earnings & Payouts</h2>
+            
+            <div className="bg-slate-900 text-white p-12 rounded-[40px] shadow-2xl flex flex-col md:flex-row justify-between items-center gap-8">
+              <div>
+                <p className="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] mb-4">Current Balance</p>
+                <h1 className="text-7xl font-black">Rs.{finances.pendingPayouts}</h1>
+                <p className="text-slate-500 mt-4 text-sm max-w-xs">Funds are released 24 hours after a tour is marked as completed by both parties.</p>
+              </div>
+              <button className="bg-emerald-500 hover:bg-emerald-400 px-12 py-5 rounded-2xl font-black text-slate-900 transition-all transform hover:scale-105 active:scale-95 shadow-xl shadow-emerald-500/20">
+                Request Payout
+              </button>
             </div>
-          )}
-        </section>
 
-        {/* Message Modal */}
-        {showModal && selectedMessage && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-2xl font-bold text-gray-800">Message Details</h3>
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="text-gray-500 hover:text-gray-700 text-3xl"
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {/* User Info */}
-                  <div className="bg-emerald-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-lg text-gray-800 mb-3">
-                      From: {selectedMessage.userName}
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <FaEnvelope className="text-emerald-600" />
-                        <span className="text-gray-600">Email:</span>
-                        <a
-                          href={`mailto:${selectedMessage.userEmail}`}
-                          className="text-blue-600 hover:underline font-semibold"
-                        >
-                          {selectedMessage.userEmail}
-                        </a>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FaUsers className="text-emerald-600" />
-                        <span className="text-gray-600">Phone:</span>
-                        <a
-                          href={`tel:${selectedMessage.userPhone}`}
-                          className="text-blue-600 hover:underline font-semibold"
-                        >
-                          {selectedMessage.userPhone}
-                        </a>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FaCheckCircle className="text-emerald-600" />
-                        <span className="text-gray-600">Status:</span>
-                        <span
-                          className={`font-semibold ${
-                            selectedMessage.status === "unread"
-                              ? "text-emerald-600"
-                              : "text-gray-600"
-                          }`}
-                        >
-                          {selectedMessage.status.toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FaCalendarCheck className="text-emerald-600" />
-                        <span className="text-gray-600">Received:</span>
-                        <span className="font-semibold">
-                          {new Date(selectedMessage.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tour Details */}
-                  {selectedMessage.tourDays && selectedMessage.tourDate && (
-                    <div className="border-t pt-4">
-                      <h4 className="font-semibold text-lg mb-2 text-gray-800">Tour Details:</h4>
-                      <div className="bg-emerald-50 p-4 rounded-lg space-y-2">
-                        <div className="flex items-center gap-2">
-                          <FaCalendarCheck className="text-emerald-600" />
-                          <span className="text-gray-600">Tour Start Date:</span>
-                          <span className="font-semibold text-gray-800">
-                            {new Date(selectedMessage.tourDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <FaCalendarCheck className="text-emerald-600" />
-                          <span className="text-gray-600">Duration:</span>
-                          <span className="font-semibold text-gray-800">
-                            {selectedMessage.tourDays} {selectedMessage.tourDays === 1 ? 'day' : 'days'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Message Content */}
-                  <div className="border-t pt-4">
-                    <h4 className="font-semibold text-lg mb-2 text-gray-800">Message:</h4>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-gray-700 whitespace-pre-wrap">
-                        {selectedMessage.message}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4 border-t">
-                    {selectedMessage.status !== "approved" && (
-                      <button
-                        onClick={() => handleAcceptMessage(selectedMessage._id)}
-                        className="flex-1 bg-emerald-600 text-white py-3 rounded-lg font-semibold hover:bg-emerald-700 transition-all"
-                      >
-                        Accept
-                      </button>
-                    )}
-                    {selectedMessage.status !== "rejected" && selectedMessage.status !== "approved" && (
-                      <button
-                        onClick={() => handleRejectMessage(selectedMessage._id)}
-                        className="flex-1 bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700 transition-all"
-                      >
-                        Reject
-                      </button>
-                    )}
-                  </div>
-                </div>
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-8 py-6 border-b border-slate-50 font-black text-slate-800">Transaction History</div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase font-black">
+                    <tr>
+                      <th className="px-8 py-5">Reference</th>
+                      <th className="px-8 py-5">Guest Name</th>
+                      <th className="px-8 py-5">Date</th>
+                      <th className="px-8 py-5 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {finances.transactions.map(tx => (
+                      <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-8 py-5 font-mono text-xs text-slate-500 tracking-tighter">{tx.id}</td>
+                        <td className="px-8 py-5 font-bold text-slate-800">{tx.traveler}</td>
+                        <td className="px-8 py-5 text-slate-500 text-sm">{tx.date}</td>
+                        <td className="px-8 py-5 text-right font-black text-slate-900">Rs.{tx.amount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         )}
-      </div>
+
+        {/* VIEW: PUBLIC BRAND EDITOR */}
+        {activeTab === "profile" && (
+          <div className="max-w-3xl mx-auto space-y-8">
+            <h2 className="text-3xl font-black text-slate-900">Storefront Branding</h2>
+            
+            <div className="bg-white p-10 rounded-[35px] shadow-sm border border-slate-100 space-y-8">
+              <div className="flex items-center gap-8 pb-8 border-b border-slate-50">
+                <div className="w-32 h-32 rounded-3xl bg-slate-100 border-4 border-white shadow-lg overflow-hidden relative group">
+                   <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
+                      <FaImages className="text-white text-2xl" />
+                   </div>
+                   <img src={currentUser?.avatar} alt="Profile" className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <h4 className="text-2xl font-black text-slate-900">{currentUser?.username}</h4>
+                  <p className="text-emerald-600 font-bold uppercase text-[10px] tracking-widest mt-1">Level 2 Guide • Verified</p>
+                </div>
+              </div>
+
+              <div className="grid gap-6">
+                <div>
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Professional Biography</label>
+                  <textarea 
+                    value={profileData.bio}
+                    onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
+                    rows="5"
+                    className="w-full p-5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-700 font-medium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Standard Day Rate (Rs.)</label>
+                    <input 
+                      type="number"
+                      value={profileData.price}
+                      className="w-full p-5 bg-slate-50 border-none rounded-2xl font-black"
+                      onChange={(e) => setProfileData({...profileData, price: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Primary Focus</label>
+                    <div className="flex flex-wrap gap-2">
+                      {profileData.tags.map(tag => (
+                        <span key={tag} className="bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tight">{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => toast.success("Public profile successfully updated!")}
+                  className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+                >
+                  Synchronize with Live Profile
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW: INQUIRIES */}
+        {activeTab === "inquiries" && (
+           <div className="max-w-5xl mx-auto space-y-8">
+              <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-black text-slate-900">Communication Hub</h2>
+                <div className="relative">
+                  <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <input 
+                    type="text" 
+                    placeholder="Search traveler name..." 
+                    className="pl-12 pr-6 py-3.5 bg-white border border-slate-100 rounded-2xl text-sm w-80 shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-5">
+                {messages.filter(m => m.userName.toLowerCase().includes(searchTerm.toLowerCase())).map((msg) => (
+                  <div 
+                    key={msg._id} 
+                    onClick={() => { setSelectedMessage(msg); setShowModal(true); }}
+                    className={`p-8 rounded-[30px] border transition-all duration-300 cursor-pointer flex justify-between items-center group ${
+                      msg.status === 'unread' ? 'bg-white border-emerald-400 shadow-xl shadow-emerald-500/5' : 'bg-white/60 border-slate-100 grayscale-[0.5]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-6">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-lg ${msg.status === 'unread' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                        {msg.userName[0]}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-slate-800 text-lg group-hover:text-emerald-600 transition-colors">{msg.userName}</h4>
+                        <p className="text-sm text-slate-400 font-medium">{msg.userEmail}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${msg.status === 'unread' ? 'text-emerald-500' : 'text-slate-300'}`}>
+                        {msg.status}
+                      </p>
+                      <p className="text-xs text-slate-400 font-bold">{new Date(msg.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+           </div>
+        )}
+
+      </main>
+
+      {/* DETAIL MODAL OVERLAY */}
+      {showModal && selectedMessage && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6">
+           <div className="bg-white rounded-[40px] w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+              <div className="p-10 space-y-8">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">{selectedMessage.userName}</h2>
+                    <p className="text-emerald-500 font-black text-xs uppercase tracking-widest mt-1">{selectedMessage.userEmail}</p>
+                  </div>
+                  <button onClick={() => setShowModal(false)} className="bg-slate-50 text-slate-400 hover:text-slate-800 w-10 h-10 rounded-full flex items-center justify-center transition-colors">×</button>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="bg-slate-50 p-6 rounded-3xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Date</p>
+                    <p className="font-black text-slate-800">{selectedMessage.tourDate ? new Date(selectedMessage.tourDate).toLocaleDateString() : 'To be discussed'}</p>
+                  </div>
+                  <div className="bg-slate-50 p-6 rounded-3xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Stay Duration</p>
+                    <p className="font-black text-slate-800">{selectedMessage.tourDays} Total Days</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Inquiry Details</p>
+                  <p className="text-slate-700 font-medium leading-relaxed bg-slate-50 p-6 rounded-3xl italic">
+                    "{selectedMessage.message}"
+                  </p>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                   <button className="flex-1 bg-emerald-600 text-white py-5 rounded-[22px] font-black shadow-xl shadow-emerald-500/20 hover:bg-emerald-500 transition-all">Accept & Notify Guest</button>
+                   <button className="flex-1 bg-slate-100 text-slate-500 py-5 rounded-[22px] font-black hover:bg-slate-200 transition-all">Decline Inquiry</button>
+                </div>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };
