@@ -4,6 +4,7 @@ import { FaTimesCircle } from 'react-icons/fa';
 
 const PaymentFailure = () => {
   const navigate = useNavigate();
+  
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
