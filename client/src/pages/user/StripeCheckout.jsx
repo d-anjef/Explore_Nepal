@@ -236,20 +236,28 @@ const StripeCheckout = () => {
   // ... (existing imports and Stripe code)
 const payWithEsewa = async () => {
   try {
-    const bId = packageData?._id || bookingDetails?.packageDetails;
+    const bId = packageData?._id || bookingDetails?.packageId || bookingDetails?.packageDetails;
 
     if (!bId) {
       return toast.error("Missing Package ID");
     }
 
-    // 🔥 CRITICAL: store BEFORE anything
     if (!bookingDetails) {
       return toast.error("Booking data missing");
     }
 
-    sessionStorage.setItem("booking", JSON.stringify(bookingDetails));
+    // ✅ FIX 1: Ensure buyer ID and correct naming for the backend schema
+    const finalBookingToStore = {
+      ...bookingDetails,
+      buyer: currentUser?._id, // Ensure the user ID is included
+      packageDetails: bId,      // Align with backend schema naming
+      paymentMethod: "esewa"
+    };
 
-    console.log("Stored booking BEFORE redirect:", bookingDetails);
+    // ✅ FIX 2: Store the ENHANCED object, not the incomplete original
+    sessionStorage.setItem("booking", JSON.stringify(finalBookingToStore));
+
+    console.log("Stored complete booking details:", finalBookingToStore);
 
     const res = await fetch("/api/payment/esewa", {
       method: "POST",
@@ -268,9 +276,9 @@ const payWithEsewa = async () => {
       throw new Error(data.message || "Server error");
     }
 
-    // 🔥 Create form
     const form = document.createElement("form");
     form.method = "POST";
+    // Using your existing test environment URL
     form.action = "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
 
     Object.entries(data).forEach(([key, value]) => {
@@ -283,7 +291,7 @@ const payWithEsewa = async () => {
 
     document.body.appendChild(form);
 
-    // 🔥 SMALL DELAY ensures storage is committed
+    // Small delay to ensure sessionStorage is committed on all browsers
     setTimeout(() => {
       form.submit();
     }, 300);

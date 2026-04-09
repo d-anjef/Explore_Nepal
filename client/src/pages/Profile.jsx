@@ -102,22 +102,34 @@ const Profile = () => {
     }
   }, [currentUser]);
 
+  // ✅ FIX: Added check to prevent "Unexpected Token W" error
   const checkGuideStatus = async () => {
     try {
       const res = await fetch(`/api/guide-application/get-status/${currentUser.email}`);
-      const data = await res.json();
-      if (data.success) setGuideStatus(data.status);
+      const contentType = res.headers.get("content-type");
+      
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.success) setGuideStatus(data.status);
+      } else {
+        const text = await res.text();
+        console.warn("Guide Status API returned non-JSON:", text);
+      }
     } catch (error) { console.error(error); }
   };
 
+  // ✅ FIX: Added safety check for non-JSON responses
   const fetchConfirmedGuides = async () => {
     try {
       const res = await fetch(`/api/guide-message/get-user-messages/${currentUser.email}`);
-      const data = await res.json();
-      if (data.success) {
-        // Filter for messages that have been 'approved' by the guide
-        const accepted = data.messages.filter(msg => msg.status === 'approved');
-        setConfirmedGuides(accepted);
+      const contentType = res.headers.get("content-type");
+
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.success) {
+          const accepted = data.messages.filter(msg => msg.status === 'approved');
+          setConfirmedGuides(accepted);
+        }
       }
     } catch (error) { console.log(error); }
   };
@@ -126,7 +138,6 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] pb-20">
-      {/* Identity Header */}
       <div className="bg-white border-b border-slate-200 py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-8">
           <div className="relative group">
@@ -150,7 +161,6 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* CONFIRMED GUIDE SECTION */}
         {confirmedGuides.length > 0 && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -166,7 +176,6 @@ const Profile = () => {
               {confirmedGuides.map((guide) => (
                 <div key={guide._id} className="bg-white border-2 border-emerald-500/10 rounded-[3rem] p-10 shadow-2xl shadow-emerald-900/5 relative overflow-hidden">
                   
-                  {/* Luxury Status Badge */}
                   <div className="absolute top-0 right-0 bg-emerald-600 text-white px-8 py-3 rounded-bl-3xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center gap-2">
                     <FaShieldAlt className="animate-pulse" /> Ready to Travel
                   </div>
@@ -180,72 +189,70 @@ const Profile = () => {
                       <div className="flex items-center gap-3 mt-2">
                         <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">Verified Professional</span>
                         <div className="flex items-center text-amber-500 gap-1 text-sm font-black">
-                           <FaAward /> Expert
+                            <FaAward /> Expert
                         </div>
                       </div>
                     </div>
                   </div>
 
+                  {/* ✅ FIX: Changed <p> to <div> to avoid DOM Nesting Warning */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-12 border-t border-slate-50 pt-10">
-                    {/* Primary Contact */}
                     <div className="space-y-1.5">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Official Email</p>
-                      <p className="text-sm text-slate-800 font-bold flex items-center gap-3">
+                      <div className="text-sm text-slate-800 font-bold flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-500">
                           <FaEnvelope size={14} />
                         </div>
                         {guide.guideEmail}
-                      </p>
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Direct Line</p>
-                      <p className="text-sm text-slate-800 font-bold flex items-center gap-3">
+                      <div className="text-sm text-slate-800 font-bold flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-500">
                           <FaPhoneAlt size={14} />
                         </div>
                         {guide.userPhone}
-                      </p>
+                      </div>
                     </div>
 
-                    {/* Trip Details */}
                     <div className="space-y-1.5">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Planned Duration</p>
-                      <p className="text-sm text-slate-800 font-bold flex items-center gap-3">
+                      <div className="text-sm text-slate-800 font-bold flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-500">
                           <FaHourglassHalf size={14} />
                         </div>
                         {guide.tourDays} Days Adventure
-                      </p>
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Meeting Protocol</p>
-                      <p className="text-sm text-slate-800 font-bold flex items-center gap-3">
+                      <div className="text-sm text-slate-800 font-bold flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-500">
                           <FaMapMarkerAlt size={14} />
                         </div>
                         Hotel/Airport Pickup
-                      </p>
+                      </div>
                     </div>
 
-                    {/* Skills & Status */}
                     <div className="space-y-1.5">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Language Proficiency</p>
-                      <p className="text-sm text-slate-800 font-bold flex items-center gap-3">
+                      <div className="text-sm text-slate-800 font-bold flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-500">
                           <FaLanguage size={18} />
                         </div>
                         English, Nepali, Hindi
-                      </p>
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Booking Status</p>
-                      <p className="text-xs text-emerald-600 font-black uppercase flex items-center gap-2 py-2">
+                      <div className="text-xs text-emerald-600 font-black uppercase flex items-center gap-2 py-2">
                         <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
                         Active Engagement
-                      </p>
+                      </div>
                     </div>
                   </div>
                 </div>

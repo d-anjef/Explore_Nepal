@@ -74,25 +74,26 @@ const Booking = () => {
     fetchData();
   }, [fetchData]);
 
-  const handleBookPackage = () => {
-    if (!booking.date) return toast.error("Please select a travel date");
-    if (booking.date < today) return toast.error("Travel date cannot be in the past");
-    
-    navigate("/stripe-checkout", {
-      state: {
-        bookingDetails: { 
-          ...booking,
-          totalPrice,
-          packageId: params?.packageId,
-          packageName: packageData.packageName,
-          guideType: booking.useStaffGuide ? "Staff" : "Private Professional",
-          guidePrice: guidePrice
-        },
-        packageData,
-      },
-    });
+const handleBookPackage = () => {
+  if (!booking.date) return toast.error("Please select a travel date");
+  
+  const finalBookingDetails = { 
+    ...booking,
+    buyer: currentUser?._id, // ✅ Add this line
+    totalPrice,
+    packageDetails: params?.packageId,
+    packageName: packageData.packageName,
+    guideType: booking.useStaffGuide ? "Staff" : "Private Professional",
+    guidePrice: guidePrice
   };
 
+  navigate("/stripe-checkout", {
+    state: {
+      bookingDetails: finalBookingDetails,
+      packageData,
+    },
+  });
+};
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
       <div className="w-10 h-10 border-2 border-slate-100 border-t-black rounded-full animate-spin mb-4" />
