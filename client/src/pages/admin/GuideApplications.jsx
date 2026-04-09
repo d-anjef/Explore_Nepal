@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { FaSearch, FaEye, FaCheck, FaTimes, FaTrash } from "react-icons/fa";
+import { FaSearch, FaEye, FaCheck, FaTimes, FaTrash, FaFilePdf, FaDownload } from "react-icons/fa";
 import AdminPageShell from "./AdminPageShell";
 import AdminTable from "../components/AdminTable";
 import AdminButton from "../components/AdminButton";
@@ -32,7 +32,6 @@ const GuideApplications = () => {
 
       if (data.success) {
         setApplications(data.applications);
-        // Fetch booking status for approved guides
         await fetchGuideBookings(data.applications);
       } else {
         setApplications([]);
@@ -47,7 +46,6 @@ const GuideApplications = () => {
 
   const fetchGuideBookings = async (apps) => {
     try {
-      // Get all guide messages
       const res = await fetch('/api/guide-message/get-all-messages', {
         method: "GET",
         headers: {
@@ -59,21 +57,17 @@ const GuideApplications = () => {
       const data = await res.json();
 
       if (data.success) {
-        // Create a map of guide emails to their ACTIVE bookings count
         const bookingsMap = {};
         const today = new Date();
-        today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+        today.setHours(0, 0, 0, 0);
         
         data.messages.forEach((msg) => {
           if (msg.status === 'approved' && msg.tourDate && msg.tourDays) {
             const tourStartDate = new Date(msg.tourDate);
             tourStartDate.setHours(0, 0, 0, 0);
-            
-            // Calculate tour end date (start date + duration)
             const tourEndDate = new Date(tourStartDate);
             tourEndDate.setDate(tourEndDate.getDate() + parseInt(msg.tourDays));
             
-            // Only count as booked if tour is currently active (today is between start and end date)
             if (today >= tourStartDate && today < tourEndDate) {
               bookingsMap[msg.guideEmail] = (bookingsMap[msg.guideEmail] || 0) + 1;
             }
@@ -172,7 +166,6 @@ const GuideApplications = () => {
   };
 
   const handleDelete = async (id) => {
-    // Use toast.promise for better UX
     toast((t) => (
       <div className="flex flex-col gap-3">
         <p className="font-semibold">Delete Application?</p>
@@ -250,7 +243,6 @@ const GuideApplications = () => {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4 mb-6">
-        {/* Search */}
         <div className="flex-1 min-w-[200px]">
           <div className="relative">
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -264,7 +256,6 @@ const GuideApplications = () => {
           </div>
         </div>
 
-        {/* Status Filter */}
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -277,7 +268,6 @@ const GuideApplications = () => {
         </select>
       </div>
 
-      {/* Applications List */}
       {loading ? (
         <div className="text-center py-8">
           <p className="text-gray-600">Loading applications...</p>
@@ -290,58 +280,40 @@ const GuideApplications = () => {
         <AdminTable>
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">
-                Name
-              </th>
-              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">
-                Email
-              </th>
-              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">
-                Phone
-              </th>
-              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">
-                Experience
-              </th>
-              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">
-                Status
-              </th>
-              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">
-                Bookings
-              </th>
-              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">
-                Applied On
-              </th>
-              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-center">
-                Actions
-              </th>
+              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">Name</th>
+              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">Email</th>
+              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">Resume</th>
+              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">Experience</th>
+              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">Status</th>
+              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">Bookings</th>
+              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-left">Applied On</th>
+              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             {applications.map((app) => {
               const bookingCount = guideBookings[app.email] || 0;
               return (
-              <tr
-                key={app._id}
-                className="border-b last:border-b-0 hover:bg-slate-50/80"
-              >
-                <td className="px-4 py-3 align-middle text-sm text-slate-800">
-                  {app.fullName}
-                </td>
+              <tr key={app._id} className="border-b last:border-b-0 hover:bg-slate-50/80">
+                <td className="px-4 py-3 align-middle text-sm text-slate-800">{app.fullName}</td>
+                <td className="px-4 py-3 align-middle text-sm text-slate-700">{app.email}</td>
                 <td className="px-4 py-3 align-middle text-sm text-slate-700">
-                  {app.email}
+                  {app.resume ? (
+                    <a 
+                      href={app.resume} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-red-600 hover:text-red-800 flex items-center gap-1 font-medium"
+                    >
+                      <FaFilePdf /> PDF
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">No Resume</span>
+                  )}
                 </td>
-                <td className="px-4 py-3 align-middle text-sm text-slate-700">
-                  {app.phone}
-                </td>
-                <td className="px-4 py-3 align-middle text-sm text-slate-700">
-                  {app.experience} years
-                </td>
+                <td className="px-4 py-3 align-middle text-sm text-slate-700">{app.experience} years</td>
                 <td className="px-4 py-3 align-middle">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(
-                      app.status
-                    )}`}
-                  >
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(app.status)}`}>
                     {app.status.toUpperCase()}
                   </span>
                 </td>
@@ -410,80 +382,80 @@ const GuideApplications = () => {
               <div className="space-y-4">
                 {/* Personal Info */}
                 <div className="border-b pb-4">
-                  <h4 className="font-semibold text-lg mb-2">
-                    Personal Information
-                  </h4>
+                  <h4 className="font-semibold text-lg mb-2">Personal Information</h4>
                   <div className="grid md:grid-cols-2 gap-3">
                     <div>
                       <p className="text-sm text-gray-600">Full Name</p>
-                      <p className="font-semibold">
-                        {selectedApplication.fullName}
-                      </p>
+                      <p className="font-semibold">{selectedApplication.fullName}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Email</p>
-                      <p className="font-semibold">
-                        {selectedApplication.email}
-                      </p>
+                      <p className="font-semibold">{selectedApplication.email}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Phone</p>
-                      <p className="font-semibold">
-                        {selectedApplication.phone}
-                      </p>
+                      <p className="font-semibold">{selectedApplication.phone}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Date of Birth</p>
-                      <p className="font-semibold">
-                        {selectedApplication.dateOfBirth}
-                      </p>
+                      <p className="font-semibold">{selectedApplication.dateOfBirth}</p>
                     </div>
                     <div className="md:col-span-2">
                       <p className="text-sm text-gray-600">Address</p>
-                      <p className="font-semibold">
-                        {selectedApplication.address}
-                      </p>
+                      <p className="font-semibold">{selectedApplication.address}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Professional Info */}
                 <div className="border-b pb-4">
-                  <h4 className="font-semibold text-lg mb-2">
-                    Professional Information
-                  </h4>
+                  <h4 className="font-semibold text-lg mb-2">Professional Information</h4>
                   <div className="grid md:grid-cols-2 gap-3">
                     <div>
                       <p className="text-sm text-gray-600">Experience</p>
-                      <p className="font-semibold">
-                        {selectedApplication.experience} years
-                      </p>
+                      <p className="font-semibold">{selectedApplication.experience} years</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Languages</p>
-                      <p className="font-semibold">
-                        {selectedApplication.languages}
-                      </p>
+                      <p className="font-semibold">{selectedApplication.languages}</p>
                     </div>
                   </div>
+                </div>
+
+                {/* Resume Section */}
+                <div className="border-b pb-4">
+                  <h4 className="font-semibold text-lg mb-2">Resume / CV</h4>
+                  {selectedApplication.resume ? (
+                    <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300">
+                      <FaFilePdf className="text-4xl text-red-500" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800">Applicant Resume.pdf</p>
+                        <p className="text-xs text-gray-500">Click to preview or download</p>
+                      </div>
+                      <a 
+                        href={selectedApplication.resume} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="bg-white px-4 py-2 border rounded-lg text-sm font-semibold hover:bg-gray-50 flex items-center gap-2"
+                      >
+                        <FaDownload className="text-gray-500" /> Download
+                      </a>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic">No resume provided.</p>
+                  )}
                 </div>
 
                 {/* Cover Letter */}
                 <div className="border-b pb-4">
                   <h4 className="font-semibold text-lg mb-2">Cover Letter</h4>
-                  <p className="text-gray-700 whitespace-pre-wrap">
-                    {selectedApplication.coverLetter}
-                  </p>
+                  <p className="text-gray-700 whitespace-pre-wrap">{selectedApplication.coverLetter}</p>
                 </div>
 
                 {/* Status */}
                 <div>
                   <h4 className="font-semibold text-lg mb-2">Status</h4>
-                  <span
-                    className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusBadge(
-                      selectedApplication.status
-                    )}`}
-                  >
+                  <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusBadge(selectedApplication.status)}`}>
                     {selectedApplication.status.toUpperCase()}
                   </span>
                 </div>
@@ -494,9 +466,7 @@ const GuideApplications = () => {
                     <AdminButton
                       variant="primary"
                       size="md"
-                      onClick={() =>
-                        handleStatusUpdate(selectedApplication._id, "approved")
-                      }
+                      onClick={() => handleStatusUpdate(selectedApplication._id, "approved")}
                       className="flex items-center gap-2"
                     >
                       <FaCheck />
@@ -507,9 +477,7 @@ const GuideApplications = () => {
                     <AdminButton
                       variant="danger"
                       size="md"
-                      onClick={() =>
-                        handleStatusUpdate(selectedApplication._id, "rejected")
-                      }
+                      onClick={() => handleStatusUpdate(selectedApplication._id, "rejected")}
                       className="flex items-center gap-2"
                     >
                       <FaTimes />
@@ -520,9 +488,7 @@ const GuideApplications = () => {
                     <AdminButton
                       variant="secondary"
                       size="md"
-                      onClick={() =>
-                        handleStatusUpdate(selectedApplication._id, "pending")
-                      }
+                      onClick={() => handleStatusUpdate(selectedApplication._id, "pending")}
                       className="flex items-center gap-2"
                     >
                       <span>Set as Pending</span>

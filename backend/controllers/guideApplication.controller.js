@@ -12,9 +12,9 @@ export const submitGuideApplication = async (req, res) => {
       experience,
       languages,
       coverLetter,
+      resume, // Received from frontend
     } = req.body;
 
-    // Validation
     if (
       !fullName ||
       !email ||
@@ -23,15 +23,15 @@ export const submitGuideApplication = async (req, res) => {
       !dateOfBirth ||
       !experience ||
       !languages ||
-      !coverLetter
+      !coverLetter ||
+      !resume // Validate resume
     ) {
       return res.status(400).send({
         success: false,
-        message: "All required fields must be filled!",
+        message: "All required fields, including your CV, must be provided!",
       });
     }
 
-    // Create new application
     const newApplication = await GuideJobApplication.create(req.body);
 
     if (newApplication) {
@@ -54,7 +54,6 @@ export const submitGuideApplication = async (req, res) => {
     });
   }
 };
-
 // Get all guide applications (Admin only)
 export const getAllGuideApplications = async (req, res) => {
   try {
