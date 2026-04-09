@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
-import API from "../utils/api";
+import axios from "axios";
 import { FaUser, FaEnvelope, FaLock, FaMapMarkerAlt, FaPhone } from "react-icons/fa";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -120,7 +120,7 @@ const Signup = () => {
     if (!validateForm()) return;
 
     try {
-      const res = await API.post("/api/auth/signup", formData);
+      const res = await axios.post(`/api/auth/signup`, formData);
       if (res?.data?.success) {
         toast.success("Account created successfully! Please login.");
         navigate("/login");
