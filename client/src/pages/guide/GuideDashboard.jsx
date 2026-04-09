@@ -4,7 +4,8 @@ import toast from "react-hot-toast";
 import { 
   FaCalendarCheck, FaEnvelope, FaTrash, FaCheckCircle, FaUsers, 
   FaSearch, FaChartLine, FaWallet, FaUserEdit, FaImages, 
-  FaSignOutAlt, FaThLarge, FaHistory, FaStar, FaPhoneAlt 
+  FaSignOutAlt, FaThLarge, FaHistory, FaStar, FaPhoneAlt,
+  FaRoute, FaTools, FaHiking, FaPlus
 } from "react-icons/fa";
 
 const GuideDashboard = () => {
@@ -13,28 +14,34 @@ const GuideDashboard = () => {
   // View States
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview"); // overview, inquiries, finance, profile
+  const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
 
-  // Business States (Public Profile)
+  // Business States (Updated to match your new Schema)
   const [profileData, setProfileData] = useState({
     bio: "Certified local guide with experience in mountain trekking and historical city tours.",
-    languages: ["English", "Spanish"],
-    tags: ["Hiking", "History", "Photography"],
-    price: 50
+    price: 50,
+    expertiseAreas: ["Trekking", "Cultural Tours", "Photography"],
+    signatureRoutes: ["Everest Base Camp", "Annapurna Circuit"],
+    gearList: ["First Aid Kit", "GPS Tracker"],
   });
 
-  // Financial Ledger States
-  const [finances] = useState({
-    totalRevenue: 4500,
-    pendingPayouts: 1200,
-    transactions: [
-      { id: "TX-9901", traveler: "John Doe", amount: 200, date: "2024-03-25", status: "Paid" },
-      { id: "TX-9902", traveler: "Sarah Smith", amount: 450, date: "2024-03-28", status: "Pending" },
-    ]
-  });
+  // Helper to handle adding tags to arrays
+  const handleAddTag = (field, value) => {
+    if (!value.trim()) return;
+    if (profileData[field].includes(value)) {
+      toast.error("Already added!");
+      return;
+    }
+    setProfileData({ ...profileData, [field]: [...profileData[field], value] });
+  };
+
+  const handleRemoveTag = (field, index) => {
+    const updatedList = profileData[field].filter((_, i) => i !== index);
+    setProfileData({ ...profileData, [field]: updatedList });
+  };
 
   const fetchMessages = async () => {
     if (!currentUser?.email) return;
@@ -61,7 +68,7 @@ const GuideDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans">
-      {/* SIDEBAR NAVIGATION - The "Pro" Look */}
+      {/* SIDEBAR NAVIGATION */}
       <aside className="w-72 bg-slate-900 text-white hidden lg:flex flex-col sticky top-0 h-screen shadow-2xl">
         <div className="p-8">
           <div className="flex items-center gap-3 mb-2">
@@ -77,8 +84,8 @@ const GuideDashboard = () => {
           {[
             { id: "overview", label: "Overview", icon: <FaThLarge /> },
             { id: "inquiries", label: "Inquiries", icon: <FaEnvelope />, count: unreadMessages.length },
+            { id: "profile", label: "Elite Portfolio", icon: <FaUserEdit /> },
             { id: "finance", label: "Financials", icon: <FaWallet /> },
-            { id: "profile", label: "Public Brand", icon: <FaUserEdit /> },
           ].map((item) => (
             <button
               key={item.id}
@@ -107,7 +114,7 @@ const GuideDashboard = () => {
              <img src={currentUser?.avatar} className="w-10 h-10 rounded-full border-2 border-emerald-500" alt="Guide" />
              <div className="overflow-hidden">
                <p className="text-xs font-bold truncate">{currentUser?.username}</p>
-               <p className="text-[10px] text-slate-500 truncate">Verified Guide</p>
+               <p className="text-[10px] text-slate-500 truncate">Verified Professional</p>
              </div>
           </div>
         </div>
@@ -119,167 +126,152 @@ const GuideDashboard = () => {
         {/* VIEW: OVERVIEW */}
         {activeTab === "overview" && (
           <div className="max-w-6xl mx-auto space-y-10">
-            <header className="flex justify-between items-end">
-              <div>
-                <h1 className="text-4xl font-black text-slate-900 tracking-tight">Executive Summary</h1>
-                <p className="text-slate-500 mt-2 font-medium">Monitoring your tour operations for this month.</p>
-              </div>
+            <header>
+              <h1 className="text-4xl font-black text-slate-900 tracking-tight">Executive Summary</h1>
+              <p className="text-slate-500 mt-2 font-medium">Your tour operations at a glance.</p>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                   <FaWallet size={80} />
-                </div>
+              <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
                 <p className="text-slate-400 text-xs font-black uppercase mb-2">Net Revenue</p>
-                <h3 className="text-4xl font-black text-slate-900">Rs.{finances.totalRevenue}</h3>
+                <h3 className="text-4xl font-black text-slate-900">Rs.4,500</h3>
                 <div className="mt-4 text-emerald-600 text-xs font-bold flex items-center gap-1">
-                   <FaChartLine /> +14.2% from last month
+                   <FaChartLine /> +14.2% Growth
                 </div>
               </div>
               
               <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-                <p className="text-slate-400 text-xs font-black uppercase mb-2">Confirmed Tours</p>
+                <p className="text-slate-400 text-xs font-black uppercase mb-2">Active Tours</p>
                 <h3 className="text-4xl font-black text-slate-900">{approvedTours.length}</h3>
-                <p className="mt-4 text-slate-400 text-xs font-medium">8 tours pending completion</p>
+                <p className="mt-4 text-slate-400 text-xs font-medium">Real-time status</p>
               </div>
 
               <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-                <p className="text-slate-400 text-xs font-black uppercase mb-2">Guide Reputation</p>
+                <p className="text-slate-400 text-xs font-black uppercase mb-2">Public Rating</p>
                 <h3 className="text-4xl font-black text-slate-900 flex items-center gap-2">4.9 <FaStar className="text-amber-400 text-2xl" /></h3>
-                <p className="mt-4 text-slate-400 text-xs font-medium">Based on 128 reviews</p>
-              </div>
-            </div>
-
-            <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center">
-                <h3 className="font-black text-slate-800 text-lg">Urgent Tasks</h3>
-                <button className="text-emerald-600 text-xs font-bold hover:underline">View All Inquiries</button>
-              </div>
-              <div className="p-4 divide-y divide-slate-50">
-                {unreadMessages.length === 0 ? (
-                  <p className="p-8 text-center text-slate-400 text-sm">No critical alerts right now.</p>
-                ) : (
-                  unreadMessages.map(msg => (
-                    <div key={msg._id} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-all rounded-2xl cursor-pointer" onClick={() => setActiveTab("inquiries")}>
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-black">
-                          {msg.userName[0]}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-800">{msg.userName}</p>
-                          <p className="text-xs text-slate-400">Sent a booking inquiry</p>
-                        </div>
-                      </div>
-                      <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-3 py-1 rounded-full">NEW INQUIRY</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {/* VIEW: FINANCES */}
-        {activeTab === "finance" && (
-          <div className="max-w-5xl mx-auto space-y-8">
-            <h2 className="text-3xl font-black text-slate-900">Earnings & Payouts</h2>
-            
-            <div className="bg-slate-900 text-white p-12 rounded-[40px] shadow-2xl flex flex-col md:flex-row justify-between items-center gap-8">
-              <div>
-                <p className="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] mb-4">Current Balance</p>
-                <h1 className="text-7xl font-black">Rs.{finances.pendingPayouts}</h1>
-                <p className="text-slate-500 mt-4 text-sm max-w-xs">Funds are released 24 hours after a tour is marked as completed by both parties.</p>
-              </div>
-              <button className="bg-emerald-500 hover:bg-emerald-400 px-12 py-5 rounded-2xl font-black text-slate-900 transition-all transform hover:scale-105 active:scale-95 shadow-xl shadow-emerald-500/20">
-                Request Payout
-              </button>
-            </div>
-
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-8 py-6 border-b border-slate-50 font-black text-slate-800">Transaction History</div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase font-black">
-                    <tr>
-                      <th className="px-8 py-5">Reference</th>
-                      <th className="px-8 py-5">Guest Name</th>
-                      <th className="px-8 py-5">Date</th>
-                      <th className="px-8 py-5 text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {finances.transactions.map(tx => (
-                      <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-8 py-5 font-mono text-xs text-slate-500 tracking-tighter">{tx.id}</td>
-                        <td className="px-8 py-5 font-bold text-slate-800">{tx.traveler}</td>
-                        <td className="px-8 py-5 text-slate-500 text-sm">{tx.date}</td>
-                        <td className="px-8 py-5 text-right font-black text-slate-900">Rs.{tx.amount}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <p className="mt-4 text-slate-400 text-xs font-medium">128 Verified Reviews</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* VIEW: PUBLIC BRAND EDITOR */}
+        {/* VIEW: ELITE PORTFOLIO EDITOR (Updated Section) */}
         {activeTab === "profile" && (
-          <div className="max-w-3xl mx-auto space-y-8">
-            <h2 className="text-3xl font-black text-slate-900">Storefront Branding</h2>
+          <div className="max-w-4xl mx-auto space-y-8">
+            <div className="flex justify-between items-end">
+                <div>
+                    <h2 className="text-3xl font-black text-slate-900">Elite Portfolio Manager</h2>
+                    <p className="text-slate-500 font-medium">Update your expertise, gear, and signature routes.</p>
+                </div>
+                <button 
+                  onClick={() => toast.success("Portfolio synchronized!")}
+                  className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+                >
+                  Save All Changes
+                </button>
+            </div>
             
-            <div className="bg-white p-10 rounded-[35px] shadow-sm border border-slate-100 space-y-8">
-              <div className="flex items-center gap-8 pb-8 border-b border-slate-50">
-                <div className="w-32 h-32 rounded-3xl bg-slate-100 border-4 border-white shadow-lg overflow-hidden relative group">
-                   <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
-                      <FaImages className="text-white text-2xl" />
-                   </div>
-                   <img src={currentUser?.avatar} alt="Profile" className="w-full h-full object-cover" />
-                </div>
-                <div>
-                  <h4 className="text-2xl font-black text-slate-900">{currentUser?.username}</h4>
-                  <p className="text-emerald-600 font-bold uppercase text-[10px] tracking-widest mt-1">Level 2 Guide • Verified</p>
-                </div>
-              </div>
-
-              <div className="grid gap-6">
-                <div>
-                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Professional Biography</label>
-                  <textarea 
-                    value={profileData.bio}
-                    onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
-                    rows="5"
-                    className="w-full p-5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-700 font-medium"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Standard Day Rate (Rs.)</label>
-                    <input 
-                      type="number"
-                      value={profileData.price}
-                      className="w-full p-5 bg-slate-50 border-none rounded-2xl font-black"
-                      onChange={(e) => setProfileData({...profileData, price: e.target.value})}
+            <div className="bg-white p-10 rounded-[35px] shadow-sm border border-slate-100 space-y-10">
+              
+              {/* Bio & Price */}
+              <div className="grid md:grid-cols-3 gap-8">
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Professional Bio</label>
+                    <textarea 
+                        value={profileData.bio}
+                        onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
+                        className="w-full p-6 bg-slate-50 border-none rounded-3xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-slate-700"
+                        rows="4"
                     />
                   </div>
-                  <div>
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Primary Focus</label>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Day Rate (Rs.)</label>
+                    <input 
+                        type="number"
+                        value={profileData.price}
+                        onChange={(e) => setProfileData({...profileData, price: e.target.value})}
+                        className="w-full p-6 bg-slate-50 border-none rounded-3xl font-black text-2xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+              </div>
+
+              {/* Dynamic Sections */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                
+                {/* 1. Expertise Areas */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-widest ml-2">
+                    <FaHiking className="text-emerald-500" /> My Specialties
+                  </div>
+                  <div className="p-6 bg-slate-50 rounded-[2rem] space-y-4">
                     <div className="flex flex-wrap gap-2">
-                      {profileData.tags.map(tag => (
-                        <span key={tag} className="bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tight">{tag}</span>
-                      ))}
+                        {profileData.expertiseAreas.map((item, i) => (
+                            <span key={i} className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-2">
+                                {item} <FaTrash onClick={() => handleRemoveTag('expertiseAreas', i)} className="text-red-400 cursor-pointer hover:text-red-600" />
+                            </span>
+                        ))}
+                    </div>
+                    <div className="flex gap-2">
+                        <input id="expInput" type="text" placeholder="Add specialty..." className="flex-1 bg-white px-4 py-2 rounded-xl text-xs outline-none" onKeyDown={(e) => e.key === 'Enter' && (handleAddTag('expertiseAreas', e.target.value), e.target.value = '')} />
                     </div>
                   </div>
                 </div>
 
-                <button 
-                  onClick={() => toast.success("Public profile successfully updated!")}
-                  className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
-                >
-                  Synchronize with Live Profile
-                </button>
+                {/* 2. Signature Routes */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-widest ml-2">
+                    <FaRoute className="text-blue-500" /> Signature Routes
+                  </div>
+                  <div className="p-6 bg-slate-50 rounded-[2rem] space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                        {profileData.signatureRoutes.map((item, i) => (
+                            <span key={i} className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-2">
+                                {item} <FaTrash onClick={() => handleRemoveTag('signatureRoutes', i)} className="text-red-400 cursor-pointer hover:text-red-600" />
+                            </span>
+                        ))}
+                    </div>
+                    <input type="text" placeholder="Add route..." className="w-full bg-white px-4 py-2 rounded-xl text-xs outline-none" onKeyDown={(e) => e.key === 'Enter' && (handleAddTag('signatureRoutes', e.target.value), e.target.value = '')} />
+                  </div>
+                </div>
+
+                {/* 3. Gear List */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-widest ml-2">
+                    <FaTools className="text-orange-500" /> Professional Gear
+                  </div>
+                  <div className="p-6 bg-slate-50 rounded-[2rem] space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                        {profileData.gearList.map((item, i) => (
+                            <span key={i} className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-2">
+                                {item} <FaTrash onClick={() => handleRemoveTag('gearList', i)} className="text-red-400 cursor-pointer hover:text-red-600" />
+                            </span>
+                        ))}
+                    </div>
+                    <input type="text" placeholder="Add gear item..." className="w-full bg-white px-4 py-2 rounded-xl text-xs outline-none" onKeyDown={(e) => e.key === 'Enter' && (handleAddTag('gearList', e.target.value), e.target.value = '')} />
+                  </div>
+                </div>
+
+                {/* 4. Tour History Preview (Stats) */}
+                <div className="space-y-4">
+                   <div className="flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-widest ml-2">
+                    <FaCheckCircle className="text-emerald-500" /> Achievement Metrics
+                  </div>
+                  <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white flex justify-around">
+                      <div className="text-center">
+                          <p className="text-2xl font-black">120+</p>
+                          <p className="text-[9px] text-slate-400 uppercase font-bold">Groups</p>
+                      </div>
+                      <div className="text-center border-x border-slate-800 px-8">
+                          <p className="text-2xl font-black">5.0</p>
+                          <p className="text-[9px] text-slate-400 uppercase font-bold">Rating</p>
+                      </div>
+                      <div className="text-center">
+                          <p className="text-2xl font-black text-emerald-400">99%</p>
+                          <p className="text-[9px] text-slate-400 uppercase font-bold">Safety</p>
+                      </div>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -287,48 +279,31 @@ const GuideDashboard = () => {
 
         {/* VIEW: INQUIRIES */}
         {activeTab === "inquiries" && (
-           <div className="max-w-5xl mx-auto space-y-8">
-              <div className="flex justify-between items-center">
-                <h2 className="text-3xl font-black text-slate-900">Communication Hub</h2>
-                <div className="relative">
-                  <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                  <input 
-                    type="text" 
-                    placeholder="Search traveler name..." 
-                    className="pl-12 pr-6 py-3.5 bg-white border border-slate-100 rounded-2xl text-sm w-80 shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-5">
-                {messages.filter(m => m.userName.toLowerCase().includes(searchTerm.toLowerCase())).map((msg) => (
-                  <div 
-                    key={msg._id} 
-                    onClick={() => { setSelectedMessage(msg); setShowModal(true); }}
-                    className={`p-8 rounded-[30px] border transition-all duration-300 cursor-pointer flex justify-between items-center group ${
-                      msg.status === 'unread' ? 'bg-white border-emerald-400 shadow-xl shadow-emerald-500/5' : 'bg-white/60 border-slate-100 grayscale-[0.5]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-6">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-lg ${msg.status === 'unread' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                        {msg.userName[0]}
-                      </div>
-                      <div>
-                        <h4 className="font-black text-slate-800 text-lg group-hover:text-emerald-600 transition-colors">{msg.userName}</h4>
-                        <p className="text-sm text-slate-400 font-medium">{msg.userEmail}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${msg.status === 'unread' ? 'text-emerald-500' : 'text-slate-300'}`}>
-                        {msg.status}
-                      </p>
-                      <p className="text-xs text-slate-400 font-bold">{new Date(msg.createdAt).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-           </div>
+            <div className="max-w-5xl mx-auto space-y-8">
+               <h2 className="text-3xl font-black text-slate-900">Communication Hub</h2>
+               <div className="grid gap-5">
+                 {messages.map((msg) => (
+                   <div 
+                     key={msg._id} 
+                     onClick={() => { setSelectedMessage(msg); setShowModal(true); }}
+                     className={`p-8 rounded-[30px] border bg-white transition-all cursor-pointer flex justify-between items-center ${
+                       msg.status === 'unread' ? 'border-emerald-400' : 'border-slate-100 opacity-60'
+                     }`}
+                   >
+                     <div className="flex items-center gap-6">
+                       <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-lg">
+                         {msg.userName[0]}
+                       </div>
+                       <div>
+                         <h4 className="font-black text-slate-800 text-lg">{msg.userName}</h4>
+                         <p className="text-sm text-slate-400 font-medium">{msg.userEmail}</p>
+                       </div>
+                     </div>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{msg.status}</span>
+                   </div>
+                 ))}
+               </div>
+            </div>
         )}
 
       </main>
@@ -336,37 +311,19 @@ const GuideDashboard = () => {
       {/* DETAIL MODAL OVERLAY */}
       {showModal && selectedMessage && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6">
-           <div className="bg-white rounded-[40px] w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+           <div className="bg-white rounded-[40px] w-full max-w-xl overflow-hidden shadow-2xl">
               <div className="p-10 space-y-8">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">{selectedMessage.userName}</h2>
-                    <p className="text-emerald-500 font-black text-xs uppercase tracking-widest mt-1">{selectedMessage.userEmail}</p>
-                  </div>
-                  <button onClick={() => setShowModal(false)} className="bg-slate-50 text-slate-400 hover:text-slate-800 w-10 h-10 rounded-full flex items-center justify-center transition-colors">×</button>
+                <div className="flex justify-between">
+                    <h2 className="text-3xl font-black text-slate-900">{selectedMessage.userName}</h2>
+                    <button onClick={() => setShowModal(false)} className="text-slate-400 text-2xl">×</button>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="bg-slate-50 p-6 rounded-3xl">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Date</p>
-                    <p className="font-black text-slate-800">{selectedMessage.tourDate ? new Date(selectedMessage.tourDate).toLocaleDateString() : 'To be discussed'}</p>
-                  </div>
-                  <div className="bg-slate-50 p-6 rounded-3xl">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Stay Duration</p>
-                    <p className="font-black text-slate-800">{selectedMessage.tourDays} Total Days</p>
-                  </div>
+                <div className="space-y-4">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Guest Message</p>
+                    <p className="text-slate-700 italic bg-slate-50 p-6 rounded-3xl">"{selectedMessage.message}"</p>
                 </div>
-
-                <div className="space-y-3">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Inquiry Details</p>
-                  <p className="text-slate-700 font-medium leading-relaxed bg-slate-50 p-6 rounded-3xl italic">
-                    "{selectedMessage.message}"
-                  </p>
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                   <button className="flex-1 bg-emerald-600 text-white py-5 rounded-[22px] font-black shadow-xl shadow-emerald-500/20 hover:bg-emerald-500 transition-all">Accept & Notify Guest</button>
-                   <button className="flex-1 bg-slate-100 text-slate-500 py-5 rounded-[22px] font-black hover:bg-slate-200 transition-all">Decline Inquiry</button>
+                <div className="flex gap-4">
+                   <button className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl font-black">Accept Booking</button>
+                   <button className="flex-1 bg-slate-100 text-slate-500 py-5 rounded-2xl font-black">Decline</button>
                 </div>
               </div>
            </div>

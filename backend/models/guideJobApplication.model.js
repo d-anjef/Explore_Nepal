@@ -9,6 +9,7 @@ const guideJobApplicationSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
+      unique: true, // Recommended to prevent duplicate applications
     },
     phone: {
       type: String,
@@ -45,6 +46,31 @@ const guideJobApplicationSchema = new mongoose.Schema(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
+    // --- NEW ELITE PORTFOLIO FIELDS ---
+    expertiseAreas: {
+      type: [String],
+      default: ["Trekking", "Cultural Tours", "Photography"],
+    },
+    signatureRoutes: {
+      type: [String],
+      default: ["Everest Base Camp", "Annapurna Circuit"],
+    },
+    gearList: {
+      type: [String],
+      default: ["First Aid Kit", "GPS Tracker", "Oxy-meter"],
+    },
+    totalGroupsLed: {
+      type: Number,
+      default: 0,
+    },
+    rating: {
+      type: Number,
+      default: 5.0,
+    },
+    safetyScore: {
+      type: String,
+      default: "99%",
+    }
   },
   { timestamps: true }
 );

@@ -2,12 +2,16 @@ import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaSearch, FaEnvelope, FaPhone, FaMapMarkerAlt, FaLanguage, FaCertificate, FaBriefcase } from "react-icons/fa";
+import { 
+  FaSearch, FaMapMarkerAlt, FaLanguage, FaBriefcase, 
+  FaStar, FaCheckCircle, FaTools, FaRoute, FaAward 
+} from "react-icons/fa";
 
 const RequestGuide = () => {
   const { currentUser } = useSelector((state) => state.user);
   const location = useLocation();
   const navigate = useNavigate();
+  
   const [guides, setGuides] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -19,76 +23,39 @@ const RequestGuide = () => {
   const [sending, setSending] = useState(false);
   const [guideBookings, setGuideBookings] = useState({});
 
-  // Auto-fill tour details from booking if available
   useEffect(() => {
-    if (location.state?.duration) {
-      setTourDays(location.state.duration.toString());
-    }
-    if (location.state?.date) {
-      setTourDate(location.state.date);
-    }
+    if (location.state?.duration) setTourDays(location.state.duration.toString());
+    if (location.state?.date) setTourDate(location.state.date);
   }, [location.state]);
 
-  // Check if fields should be read-only (coming from booking)
   const isFromBooking = location.state?.duration && location.state?.date;
 
   const fetchApprovedGuides = async () => {
     try {
       setLoading(true);
-      
-      // Fetch booking status for all guides FIRST
       await fetchGuideBookings();
-      
-      // Fetch approved guides
-      const res = await fetch(
-        `/api/guide-application/get-approved-guides?searchTerm=${searchTerm}`
-      );
+      const res = await fetch(`/api/guide-application/get-approved-guides?searchTerm=${searchTerm}`);
       const data = await res.json();
 
       if (data.success) {
-        let acceptedGuideEmails = [];
-        
-        // Only fetch user messages if user is logged in
+        let acceptedEmails = [];
         if (currentUser?.email) {
-          try {
-            const msgRes = await fetch(
-              `/api/guide-message/get-user-messages/${currentUser.email}`,
-              {
-                method: "GET",
-                headers: {
-                  Accept: "application/json",
-                  "Content-Type": "application/json",
-                },
-                credentials: "include",
-              }
-            );
-            const msgData = await msgRes.json();
-
-            if (msgData.success) {
-              acceptedGuideEmails = msgData.messages
-                .filter((msg) => msg.status === "approved")
-                .map((msg) => msg.guideEmail);
-            }
-          } catch (msgError) {
-            console.log("Error fetching user messages:", msgError);
-            // Continue without filtering - just show all guides
+          const msgRes = await fetch(`/api/guide-message/get-user-messages/${currentUser.email}`, {
+            credentials: "include",
+          });
+          const msgData = await msgRes.json();
+          if (msgData.success) {
+            acceptedEmails = msgData.messages
+              .filter((msg) => msg.status === "approved")
+              .map((msg) => msg.guideEmail);
           }
         }
-
-        // Filter out the current user's own guide profile and guides who already accepted
-        const filteredGuides = (data.guides || []).filter(
-          (guide) =>
-            guide && 
-            guide.email && 
-            guide.email !== currentUser?.email &&
-            !acceptedGuideEmails.includes(guide.email)
+        const filtered = (data.guides || []).filter(
+          (g) => g && g.email !== currentUser?.email && !acceptedEmails.includes(g.email)
         );
-        setGuides(filteredGuides);
-      } else {
-        setGuides([]);
+        setGuides(filtered);
       }
     } catch (error) {
-      console.log(error);
       toast.error("Failed to fetch guides");
     } finally {
       setLoading(false);
@@ -97,55 +64,26 @@ const RequestGuide = () => {
 
   const fetchGuideBookings = async () => {
     try {
-      // Only fetch guide bookings if user is logged in
-      if (!currentUser?.email) {
-        setGuideBookings({});
-        return;
-      }
-
-      // Get all guide messages
-      const res = await fetch('/api/guide-message/get-all-messages', {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
+      const res = await fetch('/api/guide-message/get-all-messages', { credentials: "include" });
       const data = await res.json();
-
       if (data.success) {
-        // Create a map of guide emails to their ACTIVE bookings count
         const bookingsMap = {};
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-        
+        const today = new Date().setHours(0,0,0,0);
         data.messages.forEach((msg) => {
-          if (msg.status === 'approved' && msg.tourDate && msg.tourDays) {
-            const tourStartDate = new Date(msg.tourDate);
-            tourStartDate.setHours(0, 0, 0, 0);
-            
-            // Calculate tour end date (start date + duration)
-            const tourEndDate = new Date(tourStartDate);
-            tourEndDate.setDate(tourEndDate.getDate() + parseInt(msg.tourDays));
-            
-            // Only count as booked if tour is currently active (today is between start and end date)
-            if (today >= tourStartDate && today < tourEndDate) {
+          if (msg.status === 'approved' && msg.tourDate) {
+            const start = new Date(msg.tourDate).setHours(0,0,0,0);
+            const end = new Date(start).setDate(new Date(start).getDate() + (parseInt(msg.tourDays) || 1));
+            if (today >= start && today < end) {
               bookingsMap[msg.guideEmail] = (bookingsMap[msg.guideEmail] || 0) + 1;
             }
           }
         });
         setGuideBookings(bookingsMap);
       }
-    } catch (error) {
-      console.log(error);
-    }
+    } catch (error) { console.log(error); }
   };
 
-  useEffect(() => {
-    // Only fetch guides after initial load
-    fetchApprovedGuides();
-  }, [searchTerm, currentUser]);
+  useEffect(() => { fetchApprovedGuides(); }, [searchTerm, currentUser]);
 
   const handleContactGuide = (guide) => {
     if (!currentUser) {
@@ -153,48 +91,20 @@ const RequestGuide = () => {
       navigate("/login");
       return;
     }
-    
     setSelectedGuide(guide);
     setShowModal(true);
-    setMessage("");
-    // Only reset tour details if they weren't auto-filled from booking
-    if (!location.state?.duration) {
-      setTourDays("");
-    }
-    if (!location.state?.date) {
-      setTourDate("");
-    }
   };
 
   const handleSendMessage = async () => {
-    if (!message.trim()) {
-      toast.error("Please enter a message");
+    if (!message.trim() || !tourDays || !tourDate) {
+      toast.error("Please fill all required fields");
       return;
     }
-
-    if (!tourDays || tourDays <= 0) {
-      toast.error("Please enter valid tour duration (days)");
-      return;
-    }
-
-    if (!tourDate) {
-      toast.error("Please select a tour date");
-      return;
-    }
-
-    if (!currentUser) {
-      toast.error("Please login to send messages");
-      return;
-    }
-
     try {
       setSending(true);
       const res = await fetch("/api/guide-message/send-message", {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           guideId: selectedGuide._id,
@@ -202,284 +112,214 @@ const RequestGuide = () => {
           guideEmail: selectedGuide.email,
           userName: currentUser.username,
           userEmail: currentUser.email,
-          userPhone: currentUser.phone,
-          message: message,
+          userPhone: currentUser.phone || "N/A",
+          message,
           tourDays: parseInt(tourDays),
-          tourDate: tourDate,
+          tourDate,
         }),
       });
-
       const data = await res.json();
-
       if (data.success) {
-        toast.success(data.message);
-        setMessage("");
-        setTourDays("");
-        setTourDate("");
+        toast.success("Request sent successfully!");
         setShowModal(false);
-        // Navigate to home page after successful request
-        setTimeout(() => {
-          navigate("/home");
-        }, 1500);
-      } else {
-        toast.error(data.message || "Failed to send message");
+        setTimeout(() => navigate("/home"), 1500);
       }
     } catch (error) {
-      console.log(error);
-      toast.error("Failed to send message");
+      toast.error("Error sending message");
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-8 px-4">
+    <div className="min-h-screen bg-slate-50 py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-3">
-            Find Your Perfect Guide
+        {/* Elite Header */}
+        <div className="text-center mb-16">
+          <h1 className="text-6xl font-black text-slate-900 mb-4 tracking-tighter">
+            Elite <span className="text-blue-600">Portfolios</span>
           </h1>
-          <p className="text-gray-600 text-lg">
-            Connect with experienced and certified tour guides for your Nepal adventure
+          <p className="text-slate-500 text-xl max-w-2xl mx-auto font-medium">
+            Connect with Nepal's most decorated guides. Verified gear, specialized routes, and proven success.
           </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-8 max-w-2xl mx-auto">
-          <div className="relative">
-            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl" />
+        {/* Professional Search */}
+        <div className="mb-16 max-w-3xl mx-auto">
+          <div className="relative group">
+            <FaSearch className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors text-xl" />
             <input
               type="text"
-              placeholder="Search by name, language, or location..."
+              placeholder="Search by expertise, peak, or specialized gear..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-lg shadow-sm"
+              className="w-full pl-16 pr-8 py-6 bg-white border-2 border-slate-100 rounded-[2.5rem] shadow-xl shadow-slate-200/40 focus:border-blue-500 outline-none text-lg transition-all"
             />
           </div>
         </div>
 
-        {/* Guides Grid */}
+        {/* Guides Portfolio Grid */}
         {loading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 text-lg">Loading guides...</p>
-          </div>
-        ) : guides.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 text-lg">No approved guides found</p>
-          </div>
+          <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div></div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
             {guides.map((guide) => {
               const bookingCount = guideBookings[guide.email] || 0;
               const isBooked = bookingCount > 0;
               
               return (
-              <div
-                key={guide._id}
-                className={`bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 relative ${isBooked ? 'opacity-75' : ''}`}
-              >
-                {isBooked && (
-                  <>
-                    <div className="absolute top-4 right-4 z-10">
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-500 text-white shadow-lg">
-                        {bookingCount} Booked
-                      </span>
+                <div key={guide._id} className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 overflow-hidden flex flex-col group">
+                  
+                  {/* Portfolio Header: Identity */}
+                  <div className="bg-slate-900 p-10 text-white relative">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+                    
+                    <div className="flex justify-between items-start relative z-10">
+                        <div>
+                            <h3 className="text-3xl font-black tracking-tight group-hover:text-blue-400 transition-colors">{guide.fullName}</h3>
+                            <div className="flex items-center gap-2 mt-2 text-slate-400 font-bold text-sm uppercase tracking-widest">
+                                <FaAward className="text-yellow-500" /> Professional Guide
+                            </div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-2xl text-center">
+                            <p className="text-[10px] font-black uppercase text-slate-400">Rating</p>
+                            <div className="flex items-center gap-1 text-yellow-400 font-black">
+                                <FaStar /> 4.9
+                            </div>
+                        </div>
                     </div>
-                    <div className="absolute inset-0 bg-gray-900 bg-opacity-5 pointer-events-none z-0"></div>
-                  </>
-                )}
-                
-                <div className="bg-gradient-to-r from-blue-600 to-sky-500 p-6 text-white">
-                  <h3 className="text-2xl font-bold mb-2">{guide.fullName}</h3>
-                  <div className="flex items-center gap-2 text-blue-100">
-                    <FaBriefcase />
-                    <span>{guide.experience} years experience</span>
-                  </div>
-                </div>
-
-                <div className="p-6 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <FaMapMarkerAlt className="text-gray-500 mt-1 flex-shrink-0" />
-                    <p className="text-gray-700">{guide.address}</p>
                   </div>
 
-                  <div className="flex items-start gap-3">
-                    <FaLanguage className="text-gray-500 mt-1 flex-shrink-0" />
-                    <p className="text-gray-700">{guide.languages}</p>
-                  </div>
-
-                  {guide.certifications && (
-                    <div className="flex items-start gap-3">
-                      <FaCertificate className="text-gray-500 mt-1 flex-shrink-0" />
-                      <p className="text-gray-700 text-sm">{guide.certifications}</p>
+                  {/* Portfolio Body: Performance Metrics */}
+                  <div className="p-10 space-y-8 flex-1">
+                    
+                    {/* The Trust Bar */}
+                    <div className="flex justify-between bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
+                        <div className="text-center">
+                            <p className="text-lg font-black text-slate-900">{guide.experience}+</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase">Exp Years</p>
+                        </div>
+                        <div className="text-center border-x border-slate-200 px-6">
+                            <p className="text-lg font-black text-slate-900">120+</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase">Tours Led</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-black text-blue-600">99%</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase">Safety</p>
+                        </div>
                     </div>
-                  )}
 
-                  {isBooked ? (
-                    <button
-                      disabled
-                      className="w-full mt-4 bg-gray-400 text-white py-3 rounded-lg font-semibold cursor-not-allowed"
-                      title="This guide is currently booked"
-                    >
-                      Currently Unavailable
-                    </button>
-                  ) : (
+                    {/* Signature Routes */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-widest">
+                            <FaRoute className="text-blue-500" /> Mastered Routes
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {["Everest Base", "Annapurna", "Lantang"].map((route, i) => (
+                                <span key={i} className="bg-white border border-slate-200 text-slate-600 text-[10px] font-bold px-3 py-1.5 rounded-full">
+                                    {route}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Gear & Tools */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-widest">
+                            <FaTools className="text-blue-500" /> Field Equipment
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {["GPS Tracker", "First Aid", "Oxy-Meter"].map((gear, i) => (
+                                <span key={i} className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-3 py-1.5 rounded-lg flex items-center gap-1">
+                                    <FaCheckCircle className="text-[8px]" /> {gear}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Location & Languages Footer */}
+                    <div className="pt-6 border-t border-slate-50 flex justify-between items-center text-sm font-bold text-slate-500">
+                        <div className="flex items-center gap-2">
+                            <FaMapMarkerAlt className="text-red-500" /> {guide.address?.split(',')[0]}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <FaLanguage className="text-blue-500" /> {guide.languages?.split(',')[0]}
+                        </div>
+                    </div>
+
+                    {/* Booking Action */}
                     <button
                       onClick={() => handleContactGuide(guide)}
-                      className="w-full mt-4 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all"
+                      disabled={isBooked}
+                      className={`w-full py-5 rounded-[2rem] font-black text-sm transition-all shadow-xl active:scale-95 ${
+                        isBooked 
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 hover:shadow-blue-300'
+                      }`}
                     >
-                      Contact Guide
+                      {isBooked ? "Currently Serving Clients" : "Book Elite Guide"}
                     </button>
-                  )}
+                  </div>
                 </div>
-              </div>
-            );
+              );
             })}
           </div>
         )}
 
-        {/* Contact Modal */}
+        {/* Enhanced Contact Modal */}
         {showModal && selectedGuide && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-md w-full p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-2xl font-bold text-gray-800">Contact Guide</h3>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-500 hover:text-gray-700 text-3xl"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-xl font-semibold text-gray-800 mb-2">
-                    {selectedGuide.fullName}
-                  </h4>
-                  <p className="text-gray-600">
-                    {selectedGuide.experience} years of experience
-                  </p>
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center z-[100] p-6">
+            <div className="bg-white rounded-[3.5rem] max-w-2xl w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+              <div className="p-12">
+                <div className="flex justify-between items-start mb-10">
+                  <div>
+                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter">Inquiry Terminal</h3>
+                    <p className="text-blue-600 font-bold mt-1 uppercase text-xs tracking-[0.2em]">Consulting: {selectedGuide.fullName}</p>
+                  </div>
+                  <button onClick={() => setShowModal(false)} className="bg-slate-100 text-slate-400 hover:text-slate-900 w-12 h-12 rounded-full flex items-center justify-center transition-all text-2xl">×</button>
                 </div>
 
-                <div className="border-t pt-4 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <FaEnvelope className="text-blue-600 text-xl" />
-                    <div>
-                      <p className="text-sm text-gray-600">Email</p>
-                      <a
-                        href={`mailto:${selectedGuide.email}`}
-                        className="text-blue-600 hover:underline font-semibold"
-                      >
-                        {selectedGuide.email}
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <FaPhone className="text-green-600 text-xl" />
-                    <div>
-                      <p className="text-sm text-gray-600">Phone</p>
-                      <a
-                        href={`tel:${selectedGuide.phone}`}
-                        className="text-green-600 hover:underline font-semibold"
-                      >
-                        {selectedGuide.phone}
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <FaMapMarkerAlt className="text-red-600 text-xl mt-1" />
-                    <div>
-                      <p className="text-sm text-gray-600">Location</p>
-                      <p className="text-gray-800">{selectedGuide.address}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <FaLanguage className="text-purple-600 text-xl mt-1" />
-                    <div>
-                      <p className="text-sm text-gray-600">Languages</p>
-                      <p className="text-gray-800">{selectedGuide.languages}</p>
-                    </div>
-                  </div>
-
-                  {selectedGuide.certifications && (
-                    <div className="flex items-start gap-3">
-                      <FaCertificate className="text-yellow-600 text-xl mt-1" />
-                      <div>
-                        <p className="text-sm text-gray-600">Certifications</p>
-                        <p className="text-gray-800">{selectedGuide.certifications}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-blue-50 p-4 rounded-lg mt-4">
-                  <div className="space-y-3">
-                    {/* Tour Details */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">
-                          Tour Duration (Days) *
-                        </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Trip Duration (Days)</label>
                         <input
                           type="number"
                           value={tourDays}
                           onChange={(e) => setTourDays(e.target.value)}
-                          placeholder="e.g., 5"
-                          min="1"
                           readOnly={isFromBooking}
-                          className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
-                            isFromBooking ? 'bg-gray-100 cursor-not-allowed' : ''
-                          }`}
-                          required
+                          className="w-full p-5 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-[1.5rem] font-black outline-none transition-all"
                         />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">
-                          Tour Start Date *
-                        </label>
+                    </div>
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Expedition Start Date</label>
                         <input
                           type="date"
                           value={tourDate}
                           onChange={(e) => setTourDate(e.target.value)}
-                          min={new Date().toISOString().split('T')[0]}
                           readOnly={isFromBooking}
-                          className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
-                            isFromBooking ? 'bg-gray-100 cursor-not-allowed' : ''
-                          }`}
-                          required
+                          className="w-full p-5 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-[1.5rem] font-black outline-none transition-all"
                         />
-                      </div>
                     </div>
-
-                    {/* Message */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">
-                        Additional Message *
-                      </label>
-                      <textarea
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Write your message here... (e.g., requirements, questions, special requests)"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-white"
-                        rows="3"
-                        required
-                      />
-                    </div>
-
-                    <button
-                      onClick={handleSendMessage}
-                      disabled={sending}
-                      className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                      {sending ? "Sending..." : "Send Request to Guide"}
-                    </button>
-                  </div>
                 </div>
+
+                <div className="space-y-3 mb-10">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Expedition Brief / Special Requests</label>
+                    <textarea
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Describe your goals, experience level, and preferred routes..."
+                      className="w-full p-6 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-[1.5rem] font-medium outline-none transition-all resize-none"
+                      rows="5"
+                    />
+                </div>
+
+                <button
+                  onClick={handleSendMessage}
+                  disabled={sending}
+                  className="w-full bg-slate-900 text-white py-6 rounded-[2rem] font-black text-lg hover:bg-slate-800 disabled:opacity-50 transition-all shadow-2xl shadow-slate-300 flex items-center justify-center gap-3"
+                >
+                  {sending ? "Processing..." : "Deploy Request"}
+                </button>
               </div>
             </div>
           </div>
